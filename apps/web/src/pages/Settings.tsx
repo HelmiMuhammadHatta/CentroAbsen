@@ -176,7 +176,7 @@ export const Settings = () => {
               <span className="text-slate-600">Settings</span>
             </div>
           </div>
-          {(activeTab === 'departments' || activeTab === 'positions' || activeTab === 'roles' || activeTab === 'workshifts') && !selectedRole && (
+          {(user?.role === 'Admin' || user?.role === 'HrAdmin' || user?.role === 'HR') && (activeTab === 'departments' || activeTab === 'positions' || activeTab === 'roles' || activeTab === 'workshifts') && !selectedRole && (
             <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-md hover:bg-blue-700 font-medium transition-all shadow-sm shrink-0">
               <Plus size={18} />
               Add {activeTab === 'departments' ? 'Department' : activeTab === 'positions' ? 'Position' : activeTab === 'workshifts' ? 'Work Shift' : 'Role'}
@@ -200,30 +200,30 @@ export const Settings = () => {
                 <User size={18} />
                 Profil Saya
               </button>
-              <button 
-                className={`flex items-center gap-2 pb-3 px-4 text-sm font-semibold transition-colors border-b-[3px] whitespace-nowrap ${
-                  activeTab === 'departments' 
-                    ? 'border-blue-600 text-blue-600' 
-                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                }`}
-                onClick={() => setActiveTab('departments')}
-              >
-                <Building2 size={18} />
-                Departments
-              </button>
-              <button 
-                className={`flex items-center gap-2 pb-3 px-4 text-sm font-semibold transition-colors border-b-[3px] whitespace-nowrap ${
-                  activeTab === 'positions' 
-                    ? 'border-blue-600 text-blue-600' 
-                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                }`}
-                onClick={() => setActiveTab('positions')}
-              >
-                <Briefcase size={18} />
-                Positions
-              </button>
-              {user?.role === 'Admin' && (
+              {(user?.role === 'Admin' || user?.role === 'HrAdmin' || user?.role === 'HR') && (
                 <>
+                  <button 
+                    className={`flex items-center gap-2 pb-3 px-4 text-sm font-semibold transition-colors border-b-[3px] whitespace-nowrap ${
+                      activeTab === 'departments' 
+                        ? 'border-blue-600 text-blue-600' 
+                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                    }`}
+                    onClick={() => setActiveTab('departments')}
+                  >
+                    <Building2 size={18} />
+                    Departments
+                  </button>
+                  <button 
+                    className={`flex items-center gap-2 pb-3 px-4 text-sm font-semibold transition-colors border-b-[3px] whitespace-nowrap ${
+                      activeTab === 'positions' 
+                        ? 'border-blue-600 text-blue-600' 
+                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                    }`}
+                    onClick={() => setActiveTab('positions')}
+                  >
+                    <Briefcase size={18} />
+                    Positions
+                  </button>
                   <button 
                     className={`flex items-center gap-2 pb-3 px-4 text-sm font-semibold transition-colors border-b-[3px] whitespace-nowrap ${
                       activeTab === 'roles' 

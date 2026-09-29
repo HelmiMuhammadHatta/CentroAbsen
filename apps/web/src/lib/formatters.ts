@@ -10,6 +10,8 @@ export function formatIDR(amount: number): string {
   }).format(amount);
 }
 
+export const formatRupiah = formatIDR;
+
 export function formatDate(date: string | Date, includeTime = false): string {
   const d = new Date(date);
   if (includeTime) {
