@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { leaveService, financeService, employeeService } from '../services/apiService';
+import { leaveService, financeService, employeeService, approvalService } from '../services/apiService';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FileUpload } from '@/components/ui/file-upload';
-import { Plus, Inbox, FileText, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
+import { Plus, Inbox, FileText, Calendar as CalendarIcon, Trash2, Check, X } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { formatRupiah } from '@/lib/formatters';
 
@@ -20,8 +20,11 @@ export const LeaveRequest = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
+  const [mainTab, setMainTab] = useState<'my_requests' | 'approval_queue'>('my_requests');
   const [activeTab, setActiveTab] = useState<'cuti' | 'keuangan'>('cuti');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [rejectNote, setRejectNote] = useState<{ [key: string]: string }>({});
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
 
   // Leave Form State
   const [leaveType, setLeaveType] = useState('');
@@ -61,9 +64,15 @@ export const LeaveRequest = () => {
     queryFn: () => financeService.getRequests()
   });
 
+  const { data: approvalQueueData } = useQuery({
+    queryKey: ['approval-queue'],
+    queryFn: () => approvalService.getQueue()
+  });
+
   const leaveList = Array.isArray(leaves?.data) ? leaves.data : (Array.isArray(leaves?.data?.data) ? leaves.data.data : []);
   const financeList = Array.isArray(finances?.data) ? finances.data : (Array.isArray(finances?.data?.data) ? finances.data.data : []);
   const employeeList = Array.isArray(employeesData) ? employeesData : (Array.isArray(employeesData?.data) ? employeesData.data : (Array.isArray(employeesData?.data?.data) ? employeesData.data.data : []));
+  const approvalQueue = Array.isArray(approvalQueueData?.data) ? approvalQueueData.data : [];
 
   // Mutations
   const createLeaveMutation = useMutation({
@@ -80,7 +89,7 @@ export const LeaveRequest = () => {
       setLeaveFiles(null);
     },
     onError: (err: any) => {
-      toast({ title: "Gagal", description: err.response?.data?.message || err.response?.data?.errors?.[0] || "Gagal membuat pengajuan cuti", variant: "destructive" });
+      toast({ title: "Gagal", description: err.response?.data?.message || err.response?.data?.error || err.response?.data?.errors?.[0] || "Gagal membuat pengajuan cuti", variant: "destructive" });
     }
   });
 
@@ -97,7 +106,21 @@ export const LeaveRequest = () => {
       setFinanceApproverIds(['']);
     },
     onError: (err: any) => {
-      toast({ title: "Gagal", description: err.response?.data?.message || err.response?.data?.errors?.[0] || "Gagal membuat pengajuan keuangan", variant: "destructive" });
+      toast({ title: "Gagal", description: err.response?.data?.message || err.response?.data?.error || err.response?.data?.errors?.[0] || "Gagal membuat pengajuan keuangan", variant: "destructive" });
+    }
+  });
+
+  const actApprovalMutation = useMutation({
+    mutationFn: approvalService.act,
+    onSuccess: () => {
+      toast({ title: "Berhasil", description: "Persetujuan telah diproses." });
+      queryClient.invalidateQueries({ queryKey: ['approval-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['leaves'] });
+      queryClient.invalidateQueries({ queryKey: ['finances'] });
+      setRejectingId(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Gagal", description: err.response?.data?.error || err.response?.data?.message || "Gagal memproses persetujuan", variant: "destructive" });
     }
   });
 
@@ -157,24 +180,46 @@ export const LeaveRequest = () => {
     createFinanceMutation.mutate(formData);
   };
 
+  const handleApprove = (step: any) => {
+    actApprovalMutation.mutate({
+      requestType: step.request_type,
+      requestId: step.request_id,
+      action: 'Approve'
+    });
+  };
+
+  const handleReject = (step: any) => {
+    const note = rejectNote[step.id];
+    if (!note || note.trim().length < 5) {
+      toast({ title: "Gagal", description: "Alasan penolakan minimal 5 karakter", variant: "destructive" });
+      return;
+    }
+    actApprovalMutation.mutate({
+      requestType: step.request_type,
+      requestId: step.request_id,
+      action: 'Reject',
+      note
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Approved':
-        return <Badge className="bg-success/20 text-success hover:bg-success/30 font-semibold border-none">Disetujui</Badge>;
+        return <Badge className="bg-emerald-500/10 text-emerald-600 font-semibold border-none">Disetujui</Badge>;
       case 'Rejected':
-        return <Badge className="bg-destructive/20 text-destructive hover:bg-destructive/30 font-semibold border-none">Ditolak</Badge>;
+        return <Badge className="bg-rose-500/10 text-rose-600 font-semibold border-none">Ditolak</Badge>;
       case 'Pending':
       default:
-        return <Badge className="bg-warning/20 text-warning-foreground hover:bg-warning/30 font-semibold border-none">Menunggu</Badge>;
+        return <Badge className="bg-amber-500/10 text-amber-600 font-semibold border-none">Menunggu</Badge>;
     }
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Pengajuan</h1>
-          <p className="text-muted-foreground">Kelola cuti dan keuangan Anda.</p>
+          <h1 className="text-2xl font-bold">Pengajuan & Persetujuan</h1>
+          <p className="text-muted-foreground">Kelola cuti, keuangan, dan persetujuan tim Anda.</p>
         </div>
         
         <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
@@ -338,66 +383,191 @@ export const LeaveRequest = () => {
         </Drawer>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="cuti">Cuti</TabsTrigger>
-          <TabsTrigger value="keuangan">Keuangan</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="cuti" className="mt-6 space-y-4">
-          {leaveList.length === 0 ? (
-            <EmptyState icon={CalendarIcon} title="Belum Ada Pengajuan Cuti" description="Anda belum membuat pengajuan cuti apapun." />
-          ) : (
-            leaveList.map((req: any) => (
-              <div key={req.id} className="bg-white p-4 rounded-xl shadow-sm border flex flex-col gap-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-slate-900">{req.leaveType?.name || 'Cuti'}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(req.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - {new Date(req.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </p>
-                  </div>
-                  {getStatusBadge(req.status)}
-                </div>
-                <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-600">
-                  <span className="font-medium">Alasan:</span> {req.reason}
-                </div>
-              </div>
-            ))
+      {/* Navigation Switcher between My Requests and Approval Queue */}
+      <div className="flex border-b">
+        <button
+          className={`pb-3 px-4 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${mainTab === 'my_requests' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          onClick={() => setMainTab('my_requests')}
+        >
+          <FileText className="w-4 h-4" />
+          Pengajuan Saya
+        </button>
+        <button
+          className={`pb-3 px-4 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${mainTab === 'approval_queue' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          onClick={() => setMainTab('approval_queue')}
+        >
+          <Inbox className="w-4 h-4" />
+          Persetujuan Masuk
+          {approvalQueue.length > 0 && (
+            <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full font-bold">
+              {approvalQueue.length}
+            </span>
           )}
-        </TabsContent>
-        
-        <TabsContent value="keuangan" className="mt-6 space-y-4">
-          {financeList.length === 0 ? (
-            <EmptyState icon={FileText} title="Belum Ada Pengajuan Keuangan" description="Anda belum membuat pengajuan keuangan apapun." />
+        </button>
+      </div>
+
+      {mainTab === 'my_requests' ? (
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="cuti">Cuti</TabsTrigger>
+            <TabsTrigger value="keuangan">Keuangan</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="cuti" className="mt-6 space-y-4">
+            {leaveList.length === 0 ? (
+              <EmptyState icon={CalendarIcon} title="Belum Ada Pengajuan Cuti" description="Anda belum membuat pengajuan cuti apapun." />
+            ) : (
+              leaveList.map((req: any) => {
+                const startDateStr = req.start_date || req.startDate;
+                const endDateStr = req.end_date || req.endDate;
+                const typeName = req.leave_type?.name || req.leaveType?.name || 'Cuti';
+                return (
+                  <div key={req.id} className="bg-white p-4 rounded-xl shadow-sm border flex flex-col gap-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold text-slate-900">{typeName}</h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {startDateStr ? new Date(startDateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                          {endDateStr ? ` - ${new Date(endDateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                        </p>
+                      </div>
+                      {getStatusBadge(req.status)}
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-600">
+                      <span className="font-medium">Alasan:</span> {req.reason}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </TabsContent>
+          
+          <TabsContent value="keuangan" className="mt-6 space-y-4">
+            {financeList.length === 0 ? (
+              <EmptyState icon={FileText} title="Belum Ada Pengajuan Keuangan" description="Anda belum membuat pengajuan keuangan apapun." />
+            ) : (
+              financeList.map((req: any) => {
+                const amountVal = Number(req.amount_idr ?? req.amount ?? 0);
+                const createdDate = req.created_at || req.createdAt;
+                const kindStr = req.kind || req.category || req.type || 'Pengajuan Keuangan';
+                return (
+                  <div key={req.id} className="bg-white p-4 rounded-xl shadow-sm border flex flex-col gap-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold text-slate-900">{kindStr}</h3>
+                        <p className="font-bold text-primary mt-1">{formatRupiah(amountVal)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {createdDate ? new Date(createdDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+                        </p>
+                      </div>
+                      {getStatusBadge(req.status)}
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-600">
+                      <span className="font-medium">Keterangan:</span> {req.description}
+                    </div>
+                    {req.attachments && req.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {req.attachments.map((att: any, i: number) => (
+                           <Badge key={i} variant="outline" className="text-[10px]">Lampiran {i+1}</Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </TabsContent>
+        </Tabs>
+      ) : (
+        /* Approval Queue Section */
+        <div className="space-y-4">
+          {approvalQueue.length === 0 ? (
+            <EmptyState icon={Inbox} title="Belum Ada Persetujuan Masuk" description="Saat ini tidak ada pengajuan yang memerlukan persetujuan Anda." />
           ) : (
-            financeList.map((req: any) => (
-              <div key={req.id} className="bg-white p-4 rounded-xl shadow-sm border flex flex-col gap-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-slate-900">{req.type}</h3>
-                    <p className="font-bold text-primary mt-1">{formatRupiah(req.amount)}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(req.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </p>
+            approvalQueue.map((step: any) => {
+              const reqData = step.request_data;
+              const isLeave = step.request_type === 'Leave';
+              const requesterName = reqData?.user?.full_name || 'Karyawan';
+              const requesterNik = reqData?.user?.nik ? `(NIK: ${reqData.user.nik})` : '';
+
+              return (
+                <div key={step.id} className="bg-white p-5 rounded-xl shadow-sm border flex flex-col gap-4">
+                  <div className="flex justify-between items-start border-b pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900">{requesterName}</span>
+                        <span className="text-xs text-muted-foreground">{requesterNik}</span>
+                      </div>
+                      <p className="text-xs text-primary font-semibold mt-0.5">
+                        {isLeave ? `Pengajuan Cuti (${reqData?.leave_type?.name || 'Cuti'})` : `Pengajuan Keuangan (${reqData?.kind || reqData?.category || 'Keuangan'})`}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="bg-slate-100 text-slate-700">
+                      Langkah {step.step_order} ({step.role_required || 'Approver'})
+                    </Badge>
                   </div>
-                  {getStatusBadge(req.status)}
-                </div>
-                <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-600">
-                  <span className="font-medium">Keterangan:</span> {req.description}
-                </div>
-                {req.attachments && req.attachments.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {req.attachments.map((att: any, i: number) => (
-                       <Badge key={i} variant="outline" className="text-[10px]">Lampiran {i+1}</Badge>
-                    ))}
+
+                  <div className="space-y-2 text-sm">
+                    {isLeave ? (
+                      <p className="text-slate-700">
+                        <span className="font-medium">Periode Cuti:</span>{' '}
+                        {reqData?.start_date ? new Date(reqData.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'} s/d{' '}
+                        {reqData?.end_date ? new Date(reqData.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                        {reqData?.total_work_days ? ` (${reqData.total_work_days} hari kerja)` : ''}
+                      </p>
+                    ) : (
+                      <p className="text-slate-700">
+                        <span className="font-medium">Nominal:</span>{' '}
+                        <span className="font-bold text-emerald-600">{formatRupiah(Number(reqData?.amount_idr || 0))}</span>
+                      </p>
+                    )}
+
+                    <div className="bg-slate-50 p-3 rounded-lg text-slate-600">
+                      <span className="font-medium">Alasan/Keterangan:</span> {reqData?.reason || reqData?.description || '-'}
+                    </div>
+
+                    {reqData?.attachments && reqData.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <span className="text-xs font-medium text-slate-500">Lampiran:</span>
+                        {reqData.attachments.map((att: any, idx: number) => (
+                          <Badge key={idx} variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
+                            Lampiran {idx + 1}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))
+
+                  {rejectingId === step.id ? (
+                    <div className="space-y-2 border-t pt-3">
+                      <Input
+                        placeholder="Tulis alasan penolakan (minimal 5 karakter)..."
+                        value={rejectNote[step.id] || ''}
+                        onChange={(e) => setRejectNote({ ...rejectNote, [step.id]: e.target.value })}
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setRejectingId(null)}>Batal</Button>
+                        <Button variant="destructive" size="sm" disabled={actApprovalMutation.isPending} onClick={() => handleReject(step)}>
+                          Konfirmasi Tolak
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-end gap-2 border-t pt-3">
+                      <Button variant="outline" size="sm" className="text-rose-600 hover:text-rose-700 hover:bg-rose-50" onClick={() => setRejectingId(step.id)}>
+                        <X className="w-4 h-4 mr-1" /> Tolak
+                      </Button>
+                      <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={actApprovalMutation.isPending} onClick={() => handleApprove(step)}>
+                        <Check className="w-4 h-4 mr-1" /> Setujui
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 };

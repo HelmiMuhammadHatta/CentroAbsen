@@ -1,17 +1,35 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Home, Clock, FileText, User, LogOut, Menu } from 'lucide-react';
+import { Home, Clock, FileText, User, LogOut, Menu, Bell } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { notificationService } from '../services/apiService';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 
 export const Layout = () => {
-  const { user, clearAuth, hasPermission } = useAuth();
+  const { user, clearAuth } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const displayName = user?.fullName ?? user?.email?.split('@')[0] ?? 'User';
+
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => notificationService.getAll(),
+    refetchInterval: 10000
+  });
+
+  const markAllMutation = useMutation({
+    mutationFn: notificationService.markAllRead,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] })
+  });
+
+  const notifications = Array.isArray(notificationsData?.data) ? notificationsData.data : [];
+  const unreadCount = notifications.filter((n: any) => !n.is_read).length;
 
   const handleLogout = () => {
     clearAuth();
@@ -97,6 +115,44 @@ export const Layout = () => {
           </div>
           
           <div className="flex items-center gap-4">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" className="relative">
+                  <Bell className="h-5 w-5 text-slate-600" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="end">
+                <div className="p-3 border-b flex justify-between items-center bg-slate-50">
+                  <h4 className="font-semibold text-sm">Pemberitahuan</h4>
+                  {unreadCount > 0 && (
+                    <Button variant="ghost" size="sm" className="text-xs h-7 px-2 text-primary" onClick={() => markAllMutation.mutate()}>
+                      Tandai Dibaca
+                    </Button>
+                  )}
+                </div>
+                <div className="max-h-72 overflow-y-auto divide-y">
+                  {notifications.length === 0 ? (
+                    <p className="p-4 text-xs text-center text-muted-foreground">Tidak ada pemberitahuan</p>
+                  ) : (
+                    notifications.map((n: any) => (
+                      <div key={n.id} className={cn("p-3 text-xs", !n.is_read && "bg-primary/5 font-medium")}>
+                        <p className="font-semibold text-slate-900">{n.title}</p>
+                        <p className="text-slate-600 mt-0.5">{n.body}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {new Date(n.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
             <div className="hidden md:flex items-center gap-2">
               <span className="text-sm font-medium text-slate-700">{displayName}</span>
             </div>

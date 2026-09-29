@@ -195,4 +195,19 @@ export const publicService = {
   applyJob: (formData: FormData) => api.post('/public/apply', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(res => res.data)
 };
 
+export const approvalService = {
+  getQueue: (params?: any) => api.get('/approvals/queue', { params }).then(res => res.data),
+  getInbox: (params?: any) => api.get('/approvals/inbox', { params }).then(res => res.data),
+  getInboxCount: () => api.get('/approvals/inbox/count').then(res => res.data),
+  act: (data: { requestType: 'Leave' | 'Finance'; requestId: string; action: 'Approve' | 'Reject'; note?: string }) =>
+    api.post('/approvals/act', data).then(res => res.data)
+};
+
+export const notificationService = {
+  getAll: () => api.get('/notifications').then(res => res.data),
+  getUnreadCount: () => api.get('/notifications/unread-count').then(res => res.data),
+  markAllRead: () => api.post('/notifications/read-all').then(res => res.data),
+  markRead: (id: string) => api.post(`/notifications/${id}/read`).then(res => res.data)
+};
+
 
