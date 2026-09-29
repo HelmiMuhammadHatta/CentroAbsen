@@ -1,8 +1,9 @@
+import { prisma } from '../utils/prisma';
 import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
 import { DateTime } from 'luxon';
 
-const prisma = new PrismaClient();
+
 
 export function initAttendanceJob() {
   // Jalan setiap hari jam 23:55 WIB
@@ -66,8 +67,5 @@ export function initAttendanceJob() {
         await prisma.$queryRaw`SELECT RELEASE_LOCK('centroabsen_daily_job')`;
       } catch (err) {}
     }
-  }, {
-    scheduled: true,
-    timezone: 'Asia/Jakarta'
-  });
+  }, { timezone: 'Asia/Jakarta' } as any);
 }

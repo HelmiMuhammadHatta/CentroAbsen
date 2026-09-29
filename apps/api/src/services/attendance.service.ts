@@ -1,9 +1,10 @@
+import { prisma } from '../utils/prisma';
 import { PrismaClient, WorkMode, AttendanceType, Attendance } from '@prisma/client';
 import { DateTime } from 'luxon';
 import { calculateHaversineDistance } from '../utils/haversine';
 import { processAttendancePhoto } from '../utils/image';
 
-const prisma = new PrismaClient();
+
 const TZ = 'Asia/Jakarta';
 
 export class AttendanceService {
@@ -19,7 +20,7 @@ export class AttendanceService {
     photoBuffer: Buffer;
   }) {
     // 1. Akurasi GPS
-    if (data.accuracyMeters > 100) {
+    if (data.accuracyMeters > 100 && process.env.NODE_ENV === 'production') {
       throw new Error('Akurasi GPS lebih dari 100 meter, silakan coba lagi');
     }
 
@@ -35,7 +36,7 @@ export class AttendanceService {
       flags.push('jam_perangkat_tidak_sinkron');
     }
 
-    if (data.accuracyMeters >= 50 && data.accuracyMeters <= 100) {
+    if (data.accuracyMeters >= 50) {
       flags.push('akurasi_rendah');
     }
 
@@ -68,6 +69,22 @@ export class AttendanceService {
     } else {
       if (user.work_arrangement === 'Office') {
         flags.push('mode_kerja_tidak_sesuai');
+      }
+    }
+
+    // Backend controlled Geocoding (if enabled via GEOCODING_ENABLED env)
+    let locationLabel: string | null = null;
+    if (process.env.GEOCODING_ENABLED === 'true') {
+      try {
+        const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${data.latitude}&lon=${data.longitude}`, {
+          headers: { 'User-Agent': 'CentroAbsen-App/1.0 (contact@centroabsen.local)' }
+        });
+        if (geoRes.ok) {
+          const geoData = await geoRes.json() as any;
+          locationLabel = geoData.address?.city || geoData.address?.town || geoData.display_name?.split(',')[0] || null;
+        }
+      } catch (e) {
+        // Fail-safe: Geocoding failure MUST NOT break attendance submission!
       }
     }
 

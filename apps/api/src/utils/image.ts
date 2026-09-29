@@ -15,11 +15,10 @@ export async function processAttendancePhoto(buffer: Buffer): Promise<string> {
     throw new Error('Ukuran foto maksimal 1MB');
   }
 
-  const processedBuffer = await sharp(buffer)
-    .rotate() // Putar sesuai EXIF
+  const processedBuffer = await sharp(buffer, { limitInputPixels: 4096 * 4096 })
+    .rotate() // Putar sesuai EXIF & buang metadata EXIF tambahan
     .resize({ width: 1280, height: 1280, fit: 'inside' }) // Sisi terpanjang maksimal 1280px
     .jpeg({ quality: 75 })
-    .withMetadata(false) // Buang seluruh metadata (EXIF)
     .toBuffer();
 
   const fileName = crypto.randomBytes(16).toString('hex') + '.jpg';

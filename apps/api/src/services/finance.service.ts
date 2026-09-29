@@ -1,7 +1,8 @@
+import { prisma } from '../utils/prisma';
 import { PrismaClient, RequestStatus, FinanceRequestKind } from '@prisma/client';
 import { ApprovalService } from './approval.service';
 
-const prisma = new PrismaClient();
+
 
 export class FinanceService {
   static async submitFinanceRequest(

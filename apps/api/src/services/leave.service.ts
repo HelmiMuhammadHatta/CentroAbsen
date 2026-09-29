@@ -1,8 +1,9 @@
+import { prisma } from '../utils/prisma';
 import { PrismaClient, RequestStatus } from '@prisma/client';
 import { ApprovalService } from './approval.service';
 import { DateTime } from 'luxon';
 
-const prisma = new PrismaClient();
+
 
 export class LeaveService {
   

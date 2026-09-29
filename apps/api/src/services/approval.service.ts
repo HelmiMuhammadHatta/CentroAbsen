@@ -1,7 +1,8 @@
-import { PrismaClient, RequestStatus, Role } from '@prisma/client';
+import { prisma } from '../utils/prisma';
+import { PrismaClient, RequestStatus } from '@prisma/client';
 import { NotificationService } from './notification.service';
 
-const prisma = new PrismaClient();
+
 
 export class ApprovalService {
   static async setupApprovalSteps(
@@ -24,7 +25,7 @@ export class ApprovalService {
 
     if (!firstApproverId) {
        // Fallback to HR Admin if no manager hierarchy exists
-       const hr = await tx.user.findFirst({ where: { role: Role.HrAdmin, is_active: true } });
+       const hr = await tx.user.findFirst({ where: { roles: { some: { role: { name: 'HrAdmin' } } }, is_active: true } });
        firstApproverId = hr?.id;
     }
 
@@ -40,20 +41,20 @@ export class ApprovalService {
       request_type: requestType,
       request_id: requestId,
       step_order: stepOrder++,
-      role_required: Role.Manager,
+      role_required: 'Manager',
       assigned_to_user_id: firstApproverId,
       status: RequestStatus.Pending
     });
 
     // Step 2: HR (if needed)
     if (requiresHr) {
-      const hr = await tx.user.findFirst({ where: { role: Role.HrAdmin, is_active: true } });
+      const hr = await tx.user.findFirst({ where: { roles: { some: { role: { name: 'HrAdmin' } } }, is_active: true } });
       if (hr) {
         steps.push({
           request_type: requestType,
           request_id: requestId,
           step_order: stepOrder++,
-          role_required: Role.HrAdmin,
+          role_required: 'HrAdmin',
           assigned_to_user_id: hr.id,
           status: RequestStatus.Pending
         });
@@ -62,13 +63,13 @@ export class ApprovalService {
 
     // Step 2/3: Finance (if needed)
     if (requiresFinance) {
-      const finance = await tx.user.findFirst({ where: { role: Role.Finance, is_active: true } });
+      const finance = await tx.user.findFirst({ where: { roles: { some: { role: { name: 'Finance' } } }, is_active: true } });
       if (finance) {
         steps.push({
           request_type: requestType,
           request_id: requestId,
           step_order: stepOrder++,
-          role_required: Role.Finance,
+          role_required: 'Finance',
           assigned_to_user_id: finance.id,
           status: RequestStatus.Pending
         });
@@ -83,7 +84,7 @@ export class ApprovalService {
 
   static async actOnStep(
     actorId: string, 
-    actorRole: string,
+    actorRoles: string[],
     requestType: 'Leave' | 'Finance', 
     requestId: string, 
     action: 'Approve' | 'Reject', 
@@ -103,7 +104,7 @@ export class ApprovalService {
       const currentStep = steps.find(s => s.status === RequestStatus.Pending);
       if (!currentStep) throw new Error('Tidak ada langkah persetujuan yang aktif');
 
-      if (currentStep.assigned_to_user_id !== actorId && actorRole !== Role.HrAdmin) {
+      if (currentStep.assigned_to_user_id !== actorId && !actorRoles.includes('HrAdmin')) {
          throw new Error('Anda tidak memiliki akses untuk menyetujui langkah ini');
       }
 

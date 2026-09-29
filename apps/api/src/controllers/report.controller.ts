@@ -1,8 +1,9 @@
+import { prisma } from '../utils/prisma';
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import ExcelJS from 'exceljs';
 
-const prisma = new PrismaClient();
+
 
 export class ReportController {
   static async exportAttendance(req: Request, res: Response) {
@@ -64,7 +65,7 @@ export class ReportController {
       for (const r of records) {
         worksheet.addRow({
           nik: r.user.nik,
-          name: r.user.name,
+          name: r.user.full_name,
           date: r.work_date.toISOString().split('T')[0],
           type: r.type,
           status: r.status,
