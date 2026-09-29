@@ -307,14 +307,19 @@ export const LeaveRequest = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Approved':
-      case 'MenungguPencairan':
       case 'Dicairkan':
-        return <Badge className="bg-emerald-500/10 text-emerald-600 font-semibold border-none">Disetujui</Badge>;
+        return <Badge className="bg-emerald-500/10 text-emerald-600 font-semibold border-none">Disetujui & Dicairkan</Badge>;
+      case 'MenungguPencairan':
+        return <Badge className="bg-blue-500/10 text-blue-600 font-semibold border-none">Disetujui Atasan (Proses Pencairan)</Badge>;
+      case 'MenungguCEO':
+        return <Badge className="bg-amber-500/10 text-amber-600 font-semibold border-none">Menunggu ACC CEO</Badge>;
       case 'Rejected':
+      case 'Ditolak':
         return <Badge className="bg-rose-500/10 text-rose-600 font-semibold border-none">Ditolak</Badge>;
       case 'Pending':
+      case 'Diajukan':
       default:
-        return <Badge className="bg-amber-500/10 text-amber-600 font-semibold border-none">Menunggu</Badge>;
+        return <Badge className="bg-amber-500/10 text-amber-600 font-semibold border-none">Menunggu Atasan</Badge>;
     }
   };
 
@@ -584,11 +589,14 @@ export const LeaveRequest = () => {
                       <span className="font-medium">Keterangan:</span> {req.description}
                     </div>
 
-                    {req.status === 'Pending' && (
+                    {['Pending', 'Diajukan', 'MenungguCEO', 'MenungguPencairan'].includes(req.status) && pendingStep && (
                       <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-lg text-xs">
-                        <span className="font-semibold text-amber-900">⏳ Menunggu Persetujuan dari:</span>{' '}
+                        <span className="font-semibold text-amber-900">⏳ Menunggu Persetujuan / Proses:</span>{' '}
                         <span className="text-amber-800 font-bold">
-                          {pendingStep?.assignee?.full_name || pendingStep?.role_required || 'Atasan Direct'}
+                          {pendingStep?.assignee?.full_name || 
+                           (pendingStep?.role_required === 'finance.disburse' ? 'Kasir / Tim Keuangan (Pencairan)' :
+                            pendingStep?.role_required === 'finance.approve.executive' ? 'CEO / Executive' :
+                            pendingStep?.role_required || 'Atasan Direct')}
                         </span>
                         {pendingStep?.step_order ? ` (Langkah ${pendingStep.step_order})` : ''}
                       </div>
