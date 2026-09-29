@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    depends_on:
+      - api
+      - web
+  mariadb:
+    image: mariadb:11.4
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: centroabsen
+      TZ: UTC
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    environment:
+      MP_MAX_MESSAGES: 5000
+
+  api:
+    image: node:20
+    working_dir: /app/apps/api
+    command: bash -c "corepack enable pnpm && pnpm install && pnpm dev"
+    volumes:
+      - ../:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/packages/shared/node_modules
+    environment:
+      DATABASE_URL: mysql://root:root@mariadb:3306/centroabsen
+      LOG_LEVEL: debug
+      PORT: 4000
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  web:
+    image: node:20
+    working_dir: /app/apps/web
+    command: bash -c "corepack enable pnpm && pnpm install && pnpm dev"
+    volumes:
+      - ../:/app
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/packages/shared/node_modules
+    environment:
+      NEXT_PUBLIC_API_URL: /api
+      PORT: 3000
+    depends_on:
+      - api
+
+volumes:
+  mariadb_data:

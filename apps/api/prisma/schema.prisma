@@ -1,0 +1,294 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  Employee
+  Manager
+  Finance
+  HrAdmin
+}
+
+enum WorkArrangement {
+  Office
+  Hybrid
+  Flexible
+}
+
+enum AttendanceType {
+  CheckIn
+  CheckOut
+}
+
+enum WorkMode {
+  Office
+  Home
+  Anywhere
+}
+
+enum RequestStatus {
+  Pending
+  Approved
+  Rejected
+  Skipped
+}
+
+enum FinanceRequestKind {
+  Reimbursement
+  Purchase
+}
+
+model User {
+  id                        String    @id @default(uuid()) @db.Char(36)
+  nik                       String    @unique
+  full_name                 String
+  email                     String    @unique
+  password_hash             String
+  role                      Role
+  manager_id                String?   @db.Char(36)
+  division_id               String?   @db.Char(36)
+  primary_work_location_id  String?   @db.Char(36)
+  work_arrangement          WorkArrangement
+  is_active                 Boolean   @default(true)
+  photo_path                String?
+  failed_login_count        Int       @default(0)
+  locked_until              DateTime?
+
+  created_at                DateTime  @default(now())
+  updated_at                DateTime  @updatedAt
+
+  @@map("users")
+}
+
+model Division {
+  id         String   @id @default(uuid()) @db.Char(36)
+  name       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("divisions")
+}
+
+model WorkLocation {
+  id                     String   @id @default(uuid()) @db.Char(36)
+  name                   String
+  address                String
+  latitude               Decimal  @db.Decimal(9,6)
+  longitude              Decimal  @db.Decimal(9,6)
+  radius_meters          Int
+  work_start             String
+  work_end               String
+  late_tolerance_minutes Int      @default(0)
+  is_active              Boolean  @default(true)
+
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  @@map("work_locations")
+}
+
+model Attendance {
+  id                           String         @id @default(uuid()) @db.Char(36)
+  user_id                      String         @db.Char(36)
+  work_date                    DateTime       @db.Date
+  type                         AttendanceType
+  server_time_utc              DateTime
+  client_captured_at           DateTime
+  latitude                     Decimal        @db.Decimal(9,6)
+  longitude                    Decimal        @db.Decimal(9,6)
+  accuracy_meters              Int
+  distance_from_office_meters  Int?
+  work_location_id             String?        @db.Char(36)
+  work_mode                    WorkMode
+  photo_path                   String
+  status                       String
+  status_minutes               Int            @default(0)
+  status_note                  String?
+  idempotency_key              String         @unique
+
+  created_at                   DateTime       @default(now())
+  updated_at                   DateTime       @updatedAt
+
+  @@unique([user_id, work_date, type])
+  @@index([user_id, work_date])
+  @@map("attendances")
+}
+
+model AttendanceFlag {
+  id            String   @id @default(uuid()) @db.Char(36)
+  attendance_id String   @db.Char(36)
+  flag          String
+  created_at    DateTime @default(now())
+
+  @@map("attendance_flags")
+}
+
+model Holiday {
+  id         String   @id @default(uuid()) @db.Char(36)
+  date       DateTime @unique @db.Date
+  name       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("holidays")
+}
+
+model LeaveType {
+  id                   String   @id @default(uuid()) @db.Char(36)
+  name                 String
+  annual_quota_days    Int      @default(0)
+  requires_attachment  Boolean  @default(false)
+  requires_hr_approval Boolean  @default(false)
+  is_active            Boolean  @default(true)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  @@map("leave_types")
+}
+
+model LeaveBalance {
+  id            String   @id @default(uuid()) @db.Char(36)
+  user_id       String   @db.Char(36)
+  leave_type_id String   @db.Char(36)
+  year          Int
+  quota         Int
+  used          Int      @default(0)
+
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@unique([user_id, leave_type_id, year])
+  @@map("leave_balances")
+}
+
+model LeaveRequest {
+  id              String        @id @default(uuid()) @db.Char(36)
+  user_id         String        @db.Char(36)
+  leave_type_id   String        @db.Char(36)
+  start_date      DateTime      @db.Date
+  end_date        DateTime      @db.Date
+  total_work_days Int
+  reason          String
+  status          RequestStatus
+  cancelled_at    DateTime?
+
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+
+  @@map("leave_requests")
+}
+
+model FinanceRequest {
+  id           String             @id @default(uuid()) @db.Char(36)
+  user_id      String             @db.Char(36)
+  kind         FinanceRequestKind
+  category     String
+  amount_idr   Decimal            @db.Decimal(18,2)
+  description  String
+  status       RequestStatus
+  cancelled_at DateTime?
+
+  created_at   DateTime           @default(now())
+  updated_at   DateTime           @updatedAt
+
+  @@map("finance_requests")
+}
+
+model RequestAttachment {
+  id             String   @id @default(uuid()) @db.Char(36)
+  request_type   String
+  request_id     String   @db.Char(36)
+  file_path      String
+  original_name  String
+  content_type   String
+  size_bytes     Int
+
+  created_at     DateTime @default(now())
+
+  @@map("request_attachments")
+}
+
+model ApprovalStep {
+  id                  String        @id @default(uuid()) @db.Char(36)
+  request_type        String
+  request_id          String        @db.Char(36)
+  step_order          Int
+  role_required       String?
+  assigned_to_user_id String?       @db.Char(36)
+  status              RequestStatus
+  acted_by            String?       @db.Char(36)
+  acted_at            DateTime?
+  note                String?
+
+  created_at          DateTime      @default(now())
+  updated_at          DateTime      @updatedAt
+
+  @@index([assigned_to_user_id, status])
+  @@map("approval_steps")
+}
+
+model Notification {
+  id         String   @id @default(uuid()) @db.Char(36)
+  user_id    String   @db.Char(36)
+  title      String
+  body       String
+  link       String?
+  is_read    Boolean  @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([user_id, is_read])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Char(36)
+  actor_id    String   @db.Char(36)
+  action      String
+  entity      String
+  entity_id   String
+  before_json String?  @db.LongText
+  after_json  String?  @db.LongText
+  ip          String?
+  at          DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid()) @db.Char(36)
+  hash       String
+  family_id  String
+  expires_at DateTime
+  revoked_at DateTime?
+
+  created_at DateTime  @default(now())
+
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(uuid()) @db.Char(36)
+  hash       String
+  expires_at DateTime
+  used_at    DateTime?
+
+  created_at DateTime  @default(now())
+
+  @@map("password_reset_tokens")
+}
+
+model AppSetting {
+  key        String   @id
+  value      String   @db.LongText
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("app_settings")
+}
