@@ -124,11 +124,27 @@ export const LeaveRequest = () => {
     createLeaveMutation.mutate(formData);
   };
 
+  const handleAmountChange = (val: string) => {
+    const digits = val.replace(/\D/g, '');
+    if (!digits) {
+      setFinanceAmount('');
+      return;
+    }
+    const formatted = new Intl.NumberFormat('id-ID').format(Number(digits));
+    setFinanceAmount(formatted);
+  };
+
   const handleFinanceSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanAmount = financeAmount.replace(/\D/g, '');
+    if (!cleanAmount || Number(cleanAmount) <= 0) {
+      toast({ title: "Gagal", description: "Masukkan nominal yang valid", variant: "destructive" });
+      return;
+    }
     const formData = new FormData();
     formData.append('kind', financeType);
-    formData.append('amountIdr', financeAmount);
+    formData.append('category', financeType);
+    formData.append('amountIdr', cleanAmount);
     formData.append('description', financeDescription);
     financeApproverIds.forEach(id => {
       if (id) formData.append('approverIds', id);
@@ -268,7 +284,7 @@ export const LeaveRequest = () => {
                     
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Jumlah (Rp)</label>
-                      <Input type="number" min="0" value={financeAmount} onChange={e => setFinanceAmount(e.target.value)} placeholder="Misal: 500000" required />
+                      <Input type="text" value={financeAmount} onChange={e => handleAmountChange(e.target.value)} placeholder="Misal: 500.000" required />
                     </div>
                     
                     <div className="space-y-2">

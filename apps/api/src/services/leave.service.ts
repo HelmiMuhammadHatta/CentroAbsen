@@ -45,10 +45,12 @@ export class LeaveService {
       if (totalDays === 0) throw new Error('Tidak ada hari kerja dalam rentang tanggal tersebut');
 
       const start = new Date(startDate);
-      // Validasi past date
-      if (start < new Date() && type.name !== 'Cuti Sakit') {
-         // Harusnya pengecekan luxon secara detil (timezone), dibikin sederhana
-         throw new Error('Hanya cuti sakit yang bisa diajukan untuk tanggal lampau (maks. konfigurasi)');
+      const today = new Date();
+      start.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+      
+      if (start < today && type.name !== 'Cuti Sakit') {
+         throw new Error('Hanya cuti sakit yang bisa diajukan untuk tanggal lampau');
       }
 
       // Cek bentrok cuti

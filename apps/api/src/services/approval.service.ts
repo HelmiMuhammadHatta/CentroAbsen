@@ -17,13 +17,14 @@ export class ApprovalService {
     const requester = await tx.user.findUnique({ where: { id: requesterId } });
     if (!requester) throw new Error('Pemohon tidak ditemukan');
 
+    let firstApproverId: string | null = null;
     let stepOrder = 1;
     const steps = [];
 
-    if (customApproverIds && customApproverIds.length > 0) {
-      // Use custom approvers provided by the user
-      for (const approverId of customApproverIds) {
-        if (!approverId) continue;
+    const validCustomIds = (customApproverIds || []).filter(Boolean);
+    if (validCustomIds.length > 0) {
+      firstApproverId = validCustomIds[0];
+      for (const approverId of validCustomIds) {
         steps.push({
           request_type: requestType,
           request_id: requestId,
@@ -34,8 +35,7 @@ export class ApprovalService {
         });
       }
     } else {
-      // Default to manager hierarchy
-      let firstApproverId = requester.manager_id;
+      firstApproverId = requester.manager_id;
       if (firstApproverId === requesterId) {
          const manager = await tx.user.findUnique({ where: { id: firstApproverId }});
          firstApproverId = manager?.manager_id || null;
@@ -43,7 +43,7 @@ export class ApprovalService {
 
       if (!firstApproverId) {
          const hr = await tx.user.findFirst({ where: { roles: { some: { role: { name: 'HrAdmin' } } }, is_active: true } });
-         firstApproverId = hr?.id;
+         firstApproverId = hr?.id || null;
       }
 
       if (firstApproverId) {
@@ -93,7 +93,9 @@ export class ApprovalService {
     await tx.approvalStep.createMany({ data: steps });
     
     // Notify first approver
-    await NotificationService.notify(tx, firstApproverId, 'Pengajuan Baru', `Ada pengajuan ${requestType} baru yang memerlukan persetujuan Anda.`);
+    if (firstApproverId) {
+      await NotificationService.notify(tx, firstApproverId, 'Pengajuan Baru', `Ada pengajuan ${requestType} baru yang memerlukan persetujuan Anda.`);
+    }
   }
 
   static async actOnStep(
