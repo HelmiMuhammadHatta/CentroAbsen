@@ -13,6 +13,7 @@ export class FinanceController {
       const userId = (req as any).user.id;
       const { kind, category, amountIdr, description } = req.body;
       const files = req.files as Express.Multer.File[];
+      const approverIds = req.body.approverIds ? (Array.isArray(req.body.approverIds) ? req.body.approverIds : [req.body.approverIds]) : undefined;
 
       if (kind === 'CashAdvance') {
         return res.status(400).json({ error: 'Cash Advance (kasbon) tidak lagi dapat diajukan untuk pengajuan baru.' });
@@ -40,7 +41,8 @@ export class FinanceController {
         category,
         Number(amountIdr),
         description,
-        attachmentPaths
+        attachmentPaths,
+        approverIds
       );
 
       res.status(201).json({ data: request });

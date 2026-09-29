@@ -62,7 +62,8 @@ export class FinanceService {
     category: string,
     amountIdr: number,
     description: string,
-    attachmentPaths: string[]
+    attachmentPaths: string[],
+    customApproverIds?: string[]
   ) {
     if (description.length < 10) throw new Error('Keterangan minimal 10 karakter');
     if (amountIdr <= 0) throw new Error('Nominal harus lebih dari 0');
@@ -125,28 +126,43 @@ export class FinanceService {
       }
 
       const stepsData = [];
+      let currentStepOrder = 1;
 
       // Step 1: Atasan
       let step1Status = 'Pending';
       let step1Note: string | null = null;
 
-      if (isRequesterCeo) {
-        step1Status = 'Skipped';
-        step1Note = 'Pemohon adalah CEO';
-      } else if (!managerId || managerId === ceoUserId) {
-        step1Status = 'Skipped';
-        step1Note = managerId === ceoUserId ? 'Atasan adalah CEO' : 'Pemohon tidak memiliki atasan';
+      if (customApproverIds && customApproverIds.length > 0) {
+        for (const appId of customApproverIds) {
+          if (!appId) continue;
+          stepsData.push({
+            request_type: 'Finance',
+            request_id: request.id,
+            step_order: currentStepOrder++,
+            role_required: 'finance.approve.manager',
+            assigned_to_user_id: appId,
+            status: 'Pending',
+            note: null
+          });
+        }
+      } else {
+        if (isRequesterCeo) {
+          step1Status = 'Skipped';
+          step1Note = 'Pemohon adalah CEO';
+        } else if (!managerId || managerId === ceoUserId) {
+          step1Status = 'Skipped';
+          step1Note = managerId === ceoUserId ? 'Atasan adalah CEO' : 'Pemohon tidak memiliki atasan';
+        }
+        stepsData.push({
+          request_type: 'Finance',
+          request_id: request.id,
+          step_order: currentStepOrder++,
+          role_required: 'finance.approve.manager',
+          assigned_to_user_id: managerId,
+          status: step1Status as any,
+          note: step1Note
+        });
       }
-
-      stepsData.push({
-        request_type: 'Finance',
-        request_id: request.id,
-        step_order: 1,
-        role_required: 'finance.approve.manager',
-        assigned_to_user_id: managerId,
-        status: step1Status as any,
-        note: step1Note
-      });
 
       // Step 2: CEO
       let step2Status = 'Pending';
@@ -163,7 +179,7 @@ export class FinanceService {
       stepsData.push({
         request_type: 'Finance',
         request_id: request.id,
-        step_order: 2,
+        step_order: currentStepOrder++,
         role_required: 'finance.approve.executive',
         assigned_to_user_id: ceoUserId,
         status: step2Status as any,
@@ -174,7 +190,7 @@ export class FinanceService {
       stepsData.push({
         request_type: 'Finance',
         request_id: request.id,
-        step_order: 3,
+        step_order: currentStepOrder++,
         role_required: 'finance.disburse',
         assigned_to_user_id: null,
         status: 'Pending' as any,

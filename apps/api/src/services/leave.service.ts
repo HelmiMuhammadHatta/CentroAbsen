@@ -31,7 +31,7 @@ export class LeaveService {
     return count;
   }
 
-  static async submitLeaveRequest(userId: string, leaveTypeId: string, startDate: string, endDate: string, reason: string, attachmentPaths?: string[]) {
+  static async submitLeaveRequest(userId: string, leaveTypeId: string, startDate: string, endDate: string, reason: string, attachmentPaths?: string[], customApproverIds?: string[]) {
     return await prisma.$transaction(async (tx) => {
       const type = await tx.leaveType.findUnique({ where: { id: leaveTypeId } });
       if (!type || !type.is_active) throw new Error('Jenis cuti tidak valid');
@@ -108,7 +108,7 @@ export class LeaveService {
       }
 
       // Setup Approval Engine
-      await ApprovalService.setupApprovalSteps(tx, 'Leave', request.id, userId, type.requires_hr_approval, false);
+      await ApprovalService.setupApprovalSteps(tx, 'Leave', request.id, userId, type.requires_hr_approval, false, customApproverIds);
 
       return request;
     });

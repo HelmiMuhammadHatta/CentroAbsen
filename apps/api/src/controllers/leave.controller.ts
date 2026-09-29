@@ -24,6 +24,7 @@ export class LeaveController {
       const userId = (req as any).user.id;
       const { leaveTypeId, startDate, endDate, reason } = req.body;
       const files = req.files as Express.Multer.File[];
+      const approverIds = req.body.approverIds ? (Array.isArray(req.body.approverIds) ? req.body.approverIds : [req.body.approverIds]) : undefined;
 
       let attachmentPaths: string[] = [];
       if (files && files.length > 0) {
@@ -41,7 +42,7 @@ export class LeaveController {
         }
       }
 
-      const request = await LeaveService.submitLeaveRequest(userId, leaveTypeId, startDate, endDate, reason, attachmentPaths);
+      const request = await LeaveService.submitLeaveRequest(userId, leaveTypeId, startDate, endDate, reason, attachmentPaths, approverIds);
       res.status(201).json({ data: request });
     } catch (e: any) {
       res.status(400).json({ error: e.message });

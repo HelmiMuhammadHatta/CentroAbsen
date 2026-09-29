@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FileUpload } from '@/components/ui/file-upload';
-import { Plus, Inbox, FileText, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, Inbox, FileText, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
 import { formatRupiah } from '@/lib/formatters';
 
 export const LeaveRequest = () => {
@@ -24,8 +25,8 @@ export const LeaveRequest = () => {
 
   // Leave Form State
   const [leaveType, setLeaveType] = useState('');
-  const [leaveStart, setLeaveStart] = useState('');
-  const [leaveEnd, setLeaveEnd] = useState('');
+  const [leaveStart, setLeaveStart] = useState<Date>();
+  const [leaveEnd, setLeaveEnd] = useState<Date>();
   const [leaveReason, setLeaveReason] = useState('');
 
   // Finance Form State
@@ -33,10 +34,10 @@ export const LeaveRequest = () => {
   const [financeAmount, setFinanceAmount] = useState('');
   const [financeDescription, setFinanceDescription] = useState('');
   const [financeFiles, setFinanceFiles] = useState<FileList | null>(null);
-  const [financeApproverId, setFinanceApproverId] = useState('');
+  const [financeApproverIds, setFinanceApproverIds] = useState<string[]>(['']);
 
   // Additional Leave State
-  const [leaveApproverId, setLeaveApproverId] = useState('');
+  const [leaveApproverIds, setLeaveApproverIds] = useState<string[]>(['']);
   const [leaveFiles, setLeaveFiles] = useState<FileList | null>(null);
 
   // Queries
@@ -72,10 +73,10 @@ export const LeaveRequest = () => {
       queryClient.invalidateQueries({ queryKey: ['leaves'] });
       setIsDrawerOpen(false);
       setLeaveType('');
-      setLeaveStart('');
-      setLeaveEnd('');
+      setLeaveStart(undefined);
+      setLeaveEnd(undefined);
       setLeaveReason('');
-      setLeaveApproverId('');
+      setLeaveApproverIds(['']);
       setLeaveFiles(null);
     },
     onError: (err: any) => {
@@ -93,7 +94,7 @@ export const LeaveRequest = () => {
       setFinanceAmount('');
       setFinanceDescription('');
       setFinanceFiles(null);
-      setFinanceApproverId('');
+      setFinanceApproverIds(['']);
     },
     onError: (err: any) => {
       toast({ title: "Gagal", description: err.response?.data?.message || err.response?.data?.errors?.[0] || "Gagal membuat pengajuan keuangan", variant: "destructive" });
@@ -102,36 +103,36 @@ export const LeaveRequest = () => {
 
   const handleLeaveSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!leaveStart || !leaveEnd) {
+      toast({ title: "Gagal", description: "Pilih tanggal mulai dan selesai", variant: "destructive" });
+      return;
+    }
+    const formData = new FormData();
+    formData.append('leaveTypeId', leaveType);
+    formData.append('startDate', leaveStart.toISOString());
+    formData.append('endDate', leaveEnd.toISOString());
+    formData.append('reason', leaveReason);
+    leaveApproverIds.forEach(id => {
+      if (id) formData.append('approverIds', id);
+    });
+    
     if (leaveFiles) {
-      const formData = new FormData();
-      formData.append('leaveTypeId', leaveType);
-      formData.append('startDate', `${leaveStart}T00:00:00Z`);
-      formData.append('endDate', `${leaveEnd}T00:00:00Z`);
-      formData.append('reason', leaveReason);
-      if (leaveApproverId) formData.append('approverId', leaveApproverId);
-      
       Array.from(leaveFiles).forEach(file => {
         formData.append('attachments', file);
       });
-      createLeaveMutation.mutate(formData);
-    } else {
-      createLeaveMutation.mutate({
-        leaveTypeId: leaveType,
-        startDate: `${leaveStart}T00:00:00Z`,
-        endDate: `${leaveEnd}T00:00:00Z`,
-        reason: leaveReason,
-        approverId: leaveApproverId
-      });
     }
+    createLeaveMutation.mutate(formData);
   };
 
   const handleFinanceSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData();
-    formData.append('type', financeType);
-    formData.append('amount', financeAmount);
+    formData.append('kind', financeType);
+    formData.append('amountIdr', financeAmount);
     formData.append('description', financeDescription);
-    if (financeApproverId) formData.append('approverId', financeApproverId);
+    financeApproverIds.forEach(id => {
+      if (id) formData.append('approverIds', id);
+    });
     if (financeFiles) {
       Array.from(financeFiles).forEach(file => {
         formData.append('attachments', file);
@@ -196,11 +197,11 @@ export const LeaveRequest = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Tanggal Mulai</label>
-                        <Input type="date" value={leaveStart} onChange={e => setLeaveStart(e.target.value)} required />
+                        <DatePicker date={leaveStart} setDate={setLeaveStart} />
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Tanggal Selesai</label>
-                        <Input type="date" value={leaveEnd} onChange={e => setLeaveEnd(e.target.value)} required />
+                        <DatePicker date={leaveEnd} setDate={setLeaveEnd} />
                       </div>
                     </div>
                     
@@ -211,16 +212,32 @@ export const LeaveRequest = () => {
 
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Pilih Atasan (Approver)</label>
-                      <Select value={leaveApproverId} onValueChange={setLeaveApproverId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih atasan untuk approval" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {employeeList?.map((emp: any) => (
-                            <SelectItem key={emp.id} value={emp.id}>{emp.full_name || emp.id}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {leaveApproverIds.map((id, index) => (
+                        <div key={index} className="flex gap-2 mb-2">
+                          <Select value={id} onValueChange={(val) => {
+                            const newIds = [...leaveApproverIds];
+                            newIds[index] = val;
+                            setLeaveApproverIds(newIds);
+                          }}>
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Pilih atasan untuk approval" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {employeeList?.map((emp: any) => (
+                                <SelectItem key={emp.id} value={emp.id}>{emp.full_name || emp.id}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {leaveApproverIds.length > 1 && (
+                            <Button type="button" variant="outline" size="icon" onClick={() => setLeaveApproverIds(leaveApproverIds.filter((_, i) => i !== index))}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" className="w-full mt-2" onClick={() => setLeaveApproverIds([...leaveApproverIds, ''])}>
+                        + Tambah Atasan
+                      </Button>
                     </div>
 
                     <div className="space-y-2">
@@ -261,16 +278,32 @@ export const LeaveRequest = () => {
                     
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Pilih Atasan (Approver)</label>
-                      <Select value={financeApproverId} onValueChange={setFinanceApproverId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih atasan untuk approval" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {employeeList?.map((emp: any) => (
-                            <SelectItem key={emp.id} value={emp.id}>{emp.full_name || emp.id}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {financeApproverIds.map((id, index) => (
+                        <div key={index} className="flex gap-2 mb-2">
+                          <Select value={id} onValueChange={(val) => {
+                            const newIds = [...financeApproverIds];
+                            newIds[index] = val;
+                            setFinanceApproverIds(newIds);
+                          }}>
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Pilih atasan untuk approval" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {employeeList?.map((emp: any) => (
+                                <SelectItem key={emp.id} value={emp.id}>{emp.full_name || emp.id}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {financeApproverIds.length > 1 && (
+                            <Button type="button" variant="outline" size="icon" onClick={() => setFinanceApproverIds(financeApproverIds.filter((_, i) => i !== index))}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" className="w-full mt-2" onClick={() => setFinanceApproverIds([...financeApproverIds, ''])}>
+                        + Tambah Atasan
+                      </Button>
                     </div>
                     
                     <div className="space-y-2">

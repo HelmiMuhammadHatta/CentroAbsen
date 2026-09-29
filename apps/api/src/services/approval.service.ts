@@ -11,40 +11,54 @@ export class ApprovalService {
     requestId: string, 
     requesterId: string, 
     requiresHr: boolean,
-    requiresFinance: boolean
+    requiresFinance: boolean,
+    customApproverIds?: string[]
   ) {
     const requester = await tx.user.findUnique({ where: { id: requesterId } });
     if (!requester) throw new Error('Pemohon tidak ditemukan');
 
-    let firstApproverId = requester.manager_id;
-    if (firstApproverId === requesterId) {
-       // Cannot self-approve, find manager's manager, or default to HR if none
-       const manager = await tx.user.findUnique({ where: { id: firstApproverId }});
-       firstApproverId = manager?.manager_id || null;
-    }
-
-    if (!firstApproverId) {
-       // Fallback to HR Admin if no manager hierarchy exists
-       const hr = await tx.user.findFirst({ where: { roles: { some: { role: { name: 'HrAdmin' } } }, is_active: true } });
-       firstApproverId = hr?.id;
-    }
-
-    if (!firstApproverId) {
-      throw new Error('Tidak ada approver yang tersedia untuk pengajuan ini');
-    }
-
     let stepOrder = 1;
     const steps = [];
 
-    // Step 1: Manager
-    steps.push({
-      request_type: requestType,
-      request_id: requestId,
-      step_order: stepOrder++,
-      role_required: 'Manager',
-      assigned_to_user_id: firstApproverId,
-      status: RequestStatus.Pending
-    });
+    if (customApproverIds && customApproverIds.length > 0) {
+      // Use custom approvers provided by the user
+      for (const approverId of customApproverIds) {
+        if (!approverId) continue;
+        steps.push({
+          request_type: requestType,
+          request_id: requestId,
+          step_order: stepOrder++,
+          role_required: 'Manager',
+          assigned_to_user_id: approverId,
+          status: RequestStatus.Pending
+        });
+      }
+    } else {
+      // Default to manager hierarchy
+      let firstApproverId = requester.manager_id;
+      if (firstApproverId === requesterId) {
+         const manager = await tx.user.findUnique({ where: { id: firstApproverId }});
+         firstApproverId = manager?.manager_id || null;
+      }
+
+      if (!firstApproverId) {
+         const hr = await tx.user.findFirst({ where: { roles: { some: { role: { name: 'HrAdmin' } } }, is_active: true } });
+         firstApproverId = hr?.id;
+      }
+
+      if (firstApproverId) {
+        steps.push({
+          request_type: requestType,
+          request_id: requestId,
+          step_order: stepOrder++,
+          role_required: 'Manager',
+          assigned_to_user_id: firstApproverId,
+          status: RequestStatus.Pending
+        });
+      } else {
+        throw new Error('Tidak ada approver yang tersedia untuk pengajuan ini');
+      }
+    }
 
     // Step 2: HR (if needed)
     if (requiresHr) {
