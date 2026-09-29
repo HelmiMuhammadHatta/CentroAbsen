@@ -4,8 +4,11 @@ import { employeeService, departmentService, positionService, workShiftService, 
 import { toast } from 'sonner';
 import { Search, Plus, KeyRound, Users, ChevronLeft, ChevronRight, X, Edit, Trash2, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 export const EmployeeList = () => {
+  const { user } = useAuth();
+  const canManageEmployees = user?.role === 'Admin' || user?.role === 'HrAdmin' || user?.role === 'HR';
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
@@ -126,13 +129,15 @@ export const EmployeeList = () => {
               <span className="text-slate-600">Employees</span>
             </div>
           </div>
-          <button 
-            onClick={() => { setShowModal(true); setSelectedDeptId(''); setSelectedPosId(''); }} 
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-md hover:bg-blue-700 font-medium transition-all shadow-sm shrink-0"
-          >
-            <Plus size={18} />
-            Add Employee
-          </button>
+          {canManageEmployees && (
+            <button 
+              onClick={() => { setShowModal(true); setSelectedDeptId(''); setSelectedPosId(''); }} 
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-md hover:bg-blue-700 font-medium transition-all shadow-sm shrink-0"
+            >
+              <Plus size={18} />
+              Add Employee
+            </button>
+          )}
         </div>
       </div>
 
@@ -243,15 +248,19 @@ export const EmployeeList = () => {
                             <Link to={`/employees/${emp.id}`} className="text-slate-400 hover:text-blue-600 p-2 rounded-md hover:bg-blue-50 transition-colors" title="View Details">
                               <Eye size={18} />
                             </Link>
-                            <button onClick={() => { setSelectedEmployeeId(emp.id); setEditData(emp); setSelectedDeptId(emp.departmentId); setSelectedPosId(emp.positionId); setShowEditModal(true); }} className="text-slate-400 hover:text-blue-600 p-2 rounded-md hover:bg-blue-50 transition-colors" title="Edit Employee">
-                              <Edit size={18} />
-                            </button>
-                            <button onClick={() => { setSelectedEmployeeId(emp.id); setShowPasswordModal(true); }} className="text-slate-400 hover:text-yellow-600 p-2 rounded-md hover:bg-yellow-50 transition-colors" title="Change Password">
-                              <KeyRound size={18} />
-                            </button>
-                            <button onClick={() => handleDelete(emp.id)} className="text-slate-400 hover:text-red-600 p-2 rounded-md hover:bg-red-50 transition-colors" title="Delete Employee">
-                              <Trash2 size={18} />
-                            </button>
+                            {canManageEmployees && (
+                              <>
+                                <button onClick={() => { setSelectedEmployeeId(emp.id); setEditData(emp); setSelectedDeptId(emp.departmentId); setSelectedPosId(emp.positionId); setShowEditModal(true); }} className="text-slate-400 hover:text-blue-600 p-2 rounded-md hover:bg-blue-50 transition-colors" title="Edit Employee">
+                                  <Edit size={18} />
+                                </button>
+                                <button onClick={() => { setSelectedEmployeeId(emp.id); setShowPasswordModal(true); }} className="text-slate-400 hover:text-yellow-600 p-2 rounded-md hover:bg-yellow-50 transition-colors" title="Change Password">
+                                  <KeyRound size={18} />
+                                </button>
+                                <button onClick={() => handleDelete(emp.id)} className="text-slate-400 hover:text-red-600 p-2 rounded-md hover:bg-red-50 transition-colors" title="Delete Employee">
+                                  <Trash2 size={18} />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>

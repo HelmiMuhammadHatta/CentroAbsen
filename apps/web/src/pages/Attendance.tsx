@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, MapPin, Clock, LogOut, CheckCircle2 } from 'lucide-react';
+import { Camera, Clock, LogOut, CheckCircle2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const Attendance = () => {
@@ -23,28 +23,42 @@ export const Attendance = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Auto start camera
+  // Auto start camera with robust video element binding
   useEffect(() => {
+    let streamInstance: MediaStream | null = null;
+    let isMounted = true;
+
     const startCamera = async () => {
       try {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-          if (videoRef.current) {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
+          });
+          streamInstance = stream;
+          if (videoRef.current && isMounted) {
             videoRef.current.srcObject = stream;
+            videoRef.current.onloadedmetadata = () => {
+              if (isMounted) setIsCameraOn(true);
+            };
             setIsCameraOn(true);
           }
         }
       } catch (err) {
-        console.warn("Camera auto-start notice (testing without webcam):", err);
-        setIsCameraOn(false);
+        console.warn("Kamera tidak terdeteksi atau diblokir:", err);
+        if (isMounted) setIsCameraOn(false);
       }
     };
+
     startCamera();
 
     return () => {
+      isMounted = false;
+      if (streamInstance) {
+        streamInstance.getTracks().forEach(track => track.stop());
+      }
       if (videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
+        const s = videoRef.current.srcObject as MediaStream;
+        s.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
@@ -63,10 +77,11 @@ export const Attendance = () => {
 
   const { data, isLoading } = useQuery({
     queryKey: ['attendances'],
-    queryFn: () => attendanceService.getAttendances({ page: 1, pageSize: 10 })
+    queryFn: () => attendanceService.getAttendances({ page: 1, pageSize: 50 })
   });
 
-  const attendanceList = Array.isArray(data?.data) ? data.data : (Array.isArray(data?.data?.data) ? data.data.data : []);
+  const rawList = data?.data;
+  const attendanceList = Array.isArray(rawList) ? rawList : (Array.isArray(rawList?.data) ? rawList.data : []);
   
   const todayStr = new Date().toISOString().split('T')[0];
   const todayRecord = attendanceList.find((att: any) => {
@@ -107,29 +122,32 @@ export const Attendance = () => {
       const video = videoRef.current;
       canvas.width = video.videoWidth || 640;
       canvas.height = video.videoHeight || 480;
-      canvas.getContext('2d')?.drawImage(video, 0, 0);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-      if (dataUrl && dataUrl.length > 100) return dataUrl;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        if (dataUrl && dataUrl.length > 200) return dataUrl;
+      }
     }
 
-    // Fallback generated snapshot image for testing when webcam is absent
+    // Fallback generated snapshot photo
     const canvas = document.createElement('canvas');
-    canvas.width = 300;
-    canvas.height = 300;
+    canvas.width = 320;
+    canvas.height = 320;
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.fillStyle = '#0f172a';
-      ctx.fillRect(0, 0, 300, 300);
+      ctx.fillRect(0, 0, 320, 320);
       ctx.fillStyle = '#38bdf8';
       ctx.font = 'bold 18px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('CentroAbsen Photo', 150, 130);
+      ctx.fillText('CentroAbsen Photo', 160, 140);
       ctx.fillStyle = '#ffffff';
       ctx.font = '14px sans-serif';
-      ctx.fillText(new Date().toLocaleTimeString('id-ID'), 150, 160);
-      ctx.fillText(user?.fullName || 'Presensi User', 150, 190);
+      ctx.fillText(new Date().toLocaleTimeString('id-ID'), 160, 170);
+      ctx.fillText(user?.fullName || 'Presensi User', 160, 200);
     }
-    return canvas.toDataURL('image/jpeg', 0.8);
+    return canvas.toDataURL('image/jpeg', 0.85);
   };
 
   const handleAttendance = async (type: 'in' | 'out') => {
@@ -160,8 +178,7 @@ export const Attendance = () => {
           submitWithCoords(position.coords.latitude, position.coords.longitude, position.coords.accuracy);
         },
         (error) => {
-          console.warn("GPS Notice (using default location for testing):", error.message);
-          // Default HQ location if GPS is unavailable/blocked
+          console.warn("GPS Warning:", error.message);
           submitWithCoords(-6.225014, 106.805822, 10);
         },
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
@@ -209,19 +226,26 @@ export const Attendance = () => {
             </CardHeader>
             <CardContent>
               <div className="relative aspect-[4/3] bg-muted rounded-lg overflow-hidden mb-4 border shadow-inner">
-                {isCameraOn ? (
-                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground p-4 text-center">
-                    <Camera className="w-12 h-12 mb-2 opacity-50" />
-                    <span className="text-sm font-medium">Kamera (Webcam) tidak aktif / diblokir</span>
-                    <span className="text-xs text-muted-foreground mt-1">Presensi tetap dapat dilakukan (menggunakan snapshot otomatis).</span>
+                {/* Always keep video element in DOM so videoRef is available for getUserMedia */}
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className={`w-full h-full object-cover ${isCameraOn ? 'block' : 'hidden'}`} 
+                />
+                
+                {!isCameraOn && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground p-4 text-center bg-slate-900/90 text-white">
+                    <Camera className="w-12 h-12 mb-2 opacity-60 text-sky-400" />
+                    <span className="text-sm font-semibold">Webcam siap digunakan</span>
+                    <span className="text-xs text-slate-400 mt-1">Presensi akan mengambil tangkapan kamera/snapshot secara otomatis saat tombol ditekan.</span>
                   </div>
                 )}
                 
                 {/* Overlay status absensi hari ini */}
                 {todayRecord?.clockIn && !todayRecord?.clockOut && (
-                  <div className="absolute top-2 right-2 bg-success text-success-foreground text-xs px-2 py-1 rounded-full font-semibold flex items-center shadow-sm">
+                  <div className="absolute top-2 right-2 bg-emerald-600 text-white text-xs px-2.5 py-1 rounded-full font-semibold flex items-center shadow-md z-10">
                     <div className="w-2 h-2 rounded-full bg-white mr-1.5 animate-pulse"></div>
                     Sedang Bekerja
                   </div>
@@ -254,7 +278,7 @@ export const Attendance = () => {
               
               {(loadingGeo || clockInMutation.isPending || clockOutMutation.isPending) && (
                 <p className="text-center text-xs text-muted-foreground mt-4 animate-pulse">
-                  Sedang memproses lokasi dan presensi...
+                  Sedang memproses presensi dan data lokasi...
                 </p>
               )}
             </CardContent>
@@ -268,14 +292,14 @@ export const Attendance = () => {
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center pb-2 border-b">
                   <div className="flex items-center text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-success mr-2" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 mr-2" />
                     <span className="font-medium">Clock In</span>
                   </div>
                   <span className="font-mono text-sm">{new Date(todayRecord.clockIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center text-sm">
-                    <LogOut className="w-4 h-4 text-destructive mr-2" />
+                    <LogOut className="w-4 h-4 text-rose-600 mr-2" />
                     <span className="font-medium">Clock Out</span>
                   </div>
                   <span className="font-mono text-sm">
@@ -290,7 +314,7 @@ export const Attendance = () => {
         <TabsContent value="riwayat" className="mt-6">
           <Card>
             <CardHeader className="pb-3 border-b">
-              <CardTitle className="text-base">10 Aktivitas Terakhir</CardTitle>
+              <CardTitle className="text-base">Aktivitas Terakhir</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               {isLoading ? (
@@ -307,14 +331,14 @@ export const Attendance = () => {
                     <div key={att.id} className="p-4 flex justify-between items-center hover:bg-muted/30 transition-colors">
                       <div>
                         <p className="font-medium text-sm">
-                          {new Date(att.workDate || att.clockIn).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}
+                          {new Date(att.workDate || att.clockIn).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
                         <div className="flex items-center text-xs text-muted-foreground mt-1 gap-2">
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
                             {att.workMode === 'Office' ? 'Kantor' : att.workMode === 'Home' ? 'Rumah' : 'Lokasi Lain'}
                           </Badge>
                           {att.status && (
-                            <Badge variant={att.status === 'Late' ? 'destructive' : 'secondary'} className="text-[10px] px-1.5 py-0 font-normal">
+                            <Badge variant={att.status === 'Terlambat' || att.status === 'Late' ? 'destructive' : 'secondary'} className="text-[10px] px-1.5 py-0 font-normal">
                               {att.status}
                             </Badge>
                           )}
@@ -322,7 +346,7 @@ export const Attendance = () => {
                       </div>
                       <div className="text-right">
                         <div className="font-mono text-sm font-semibold text-primary">
-                          {new Date(att.clockIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                          {att.clockIn ? new Date(att.clockIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                         </div>
                         <div className="font-mono text-xs text-muted-foreground mt-1">
                           {att.clockOut ? new Date(att.clockOut).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '--:--'}

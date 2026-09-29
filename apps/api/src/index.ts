@@ -92,12 +92,13 @@ app.post('/api/v1/holidays', requireAuth, requirePermission('holiday.create'), H
 app.delete('/api/v1/holidays/:id', requireAuth, requirePermission('holiday.delete'), HolidayController.delete);
 
 // Attendance Routes
-app.post('/api/v1/attendances/submit', requireAuth, userRateLimit(5, 60 * 1000), upload.single('photo'), AttendanceController.submit);
-app.post('/api/v1/attendances/check-in', requireAuth, userRateLimit(5, 60 * 1000), upload.single('photo'), (req, res, next) => { req.body.type = 'CheckIn'; next(); }, AttendanceController.submit);
-app.post('/api/v1/attendances/check-out', requireAuth, userRateLimit(5, 60 * 1000), upload.single('photo'), (req, res, next) => { req.body.type = 'CheckOut'; next(); }, AttendanceController.submit);
+app.post('/api/v1/attendances/submit', requireAuth, userRateLimit(10, 60 * 1000), upload.single('photo'), AttendanceController.submit);
+app.post('/api/v1/attendances/check-in', requireAuth, userRateLimit(10, 60 * 1000), upload.single('photo'), (req, res, next) => { req.body.type = 'CheckIn'; next(); }, AttendanceController.submit);
+app.post('/api/v1/attendances/check-out', requireAuth, userRateLimit(10, 60 * 1000), upload.single('photo'), (req, res, next) => { req.body.type = 'CheckOut'; next(); }, AttendanceController.submit);
 app.get('/api/v1/attendances/today', requireAuth, AttendanceController.getToday);
-app.get('/api/v1/attendances/history', requireAuth, requirePermission('attendance.read'), AttendanceController.list || ((req, res) => res.json({ data: [] })));
-app.get('/api/v1/attendances/summary/:employeeId', requireAuth, AttendanceController.getSummary || ((req, res) => res.json({ data: {} })));
+app.get('/api/v1/attendances', requireAuth, AttendanceController.list);
+app.get('/api/v1/attendances/history', requireAuth, AttendanceController.list);
+app.get('/api/v1/attendances/summary/:employeeId', requireAuth, AttendanceController.getSummary);
 app.get('/api/v1/attendances/:id/photo', requireAuth, AttendanceController.getPhoto);
 app.get('/api/v1/attendances/:id', requireAuth, AttendanceController.getDetail);
 

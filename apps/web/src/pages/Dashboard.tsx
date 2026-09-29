@@ -329,10 +329,12 @@ export const Dashboard = () => {
                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                   </svg>
                   <h3 className={styles.emptyStateTitle}>Belum ada data staf bulan ini</h3>
-                  <p className={styles.emptyStateDesc}>Tambahkan karyawan terlebih dahulu agar sistem dapat mulai memantau absensi.</p>
-                  <button className={styles.ctaButton} onClick={() => navigate('/employees')}>
-                    Tambah Karyawan
-                  </button>
+                  <p className={styles.emptyStateDesc}>Belum ada aktivitas absensi karyawan bulan ini.</p>
+                  {(user?.role === 'Admin' || user?.role === 'HrAdmin' || user?.role === 'HR') && (
+                    <button className={styles.ctaButton} onClick={() => navigate('/employees')}>
+                      Tambah Karyawan
+                    </button>
+                  )}
                 </div>
               )}
             </div>
