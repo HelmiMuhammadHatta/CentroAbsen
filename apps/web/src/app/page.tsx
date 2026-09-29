@@ -1,7 +1,14 @@
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-export default function Home() {
-  // Dalam aplikasi nyata, periksa cookie auth di sini
-  // Redirect ke /absen (Beranda Karyawan) secara default sebagai shell tunggal
+export default async function Home() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('centroabsen_auth');
+  
+  if (!token) {
+    redirect('/login');
+  }
+
+  // Jika sudah login (memiliki cookie), arahkan ke UI Absensi (Beranda Karyawan)
   redirect('/absen');
 }
