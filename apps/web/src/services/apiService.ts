@@ -28,7 +28,7 @@ export const employeeService = {
 
 export const leaveService = {
   getTypes: (employeeId?: string) => api.get('/leave-types', { params: { employeeId } }).then(res => res.data),
-  getRequests: (params?: any) => api.get('/leave-requests', { params }).then(res => res.data),
+  getRequests: (params?: any) => api.get('/leaves', { params }).then(res => res.data),
   create: (data: FormData) => api.post('/leaves/submit', data, { headers: { 'Content-Type': 'multipart/form-data' } }).then(res => res.data),
   approve: (id: string) => api.put(`/leave-requests/${id}/approve`).then(res => res.data),
   reject: ({ id, reason }: { id: string, reason: string }) => api.put(`/leave-requests/${id}/reject`, { reason }).then(res => res.data),

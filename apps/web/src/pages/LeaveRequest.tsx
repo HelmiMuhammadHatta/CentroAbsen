@@ -207,7 +207,7 @@ export const LeaveRequest = () => {
                     
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Alasan / Keterangan</label>
-                      <Input value={leaveReason} onChange={e => setLeaveReason(e.target.value)} placeholder="Tulis alasan cuti..." required />
+                      <Input value={leaveReason} onChange={e => setLeaveReason(e.target.value)} placeholder="Tulis alasan cuti..." required minLength={10} />
                     </div>
 
                     <div className="space-y-2">
@@ -261,7 +261,7 @@ export const LeaveRequest = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Reimbursement">Reimbursement</SelectItem>
-                          <SelectItem value="Cash Advance">Cash Advance</SelectItem>
+                          <SelectItem value="Purchase">Purchase (Pembelian)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -273,7 +273,7 @@ export const LeaveRequest = () => {
                     
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Keterangan</label>
-                      <Input value={financeDescription} onChange={e => setFinanceDescription(e.target.value)} placeholder="Tulis keperluan..." required />
+                      <Input value={financeDescription} onChange={e => setFinanceDescription(e.target.value)} placeholder="Tulis keperluan (minimal 10 huruf)..." required minLength={10} />
                     </div>
                     
                     <div className="space-y-2">

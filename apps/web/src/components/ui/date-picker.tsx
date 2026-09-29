@@ -21,7 +21,7 @@ export interface DatePickerProps {
 
 export function DatePicker({ date, setDate, placeholder = "Pilih tanggal", disabled }: DatePickerProps) {
   return (
-    <Popover>
+    <Popover modal={true}>
       <PopoverTrigger asChild>
         <Button
           variant={"outline"}
