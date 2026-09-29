@@ -141,11 +141,11 @@ export default function AbsenPage() {
           </div>
         </div>
         <div className="absolute bottom-8 left-0 right-0 flex justify-center">
-          <button onClick={takePhoto} className="w-16 h-16 bg-white rounded-full border-4 border-gray-300" />
+          <button onClick={takePhoto} className="w-16 h-16 bg-white rounded-full border-4 border-gray-300"></button>
         </div>
       </div>
 
-      <canvas ref={canvasRef} className="hidden" />
+      <canvas ref={canvasRef} className="hidden"></canvas>
 
       {/* PREVIEW STATE */}
       {step === 'PREVIEW' && photoUrl && (
