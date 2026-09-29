@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FileUpload } from '@/components/ui/file-upload';
-import { Plus, Inbox, FileText, Calendar as CalendarIcon, Trash2, Check, X, Printer } from 'lucide-react';
+import { Plus, Inbox, FileText, Calendar as CalendarIcon, Trash2, Check, X, Printer, MessageCircle } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { formatRupiah } from '@/lib/formatters';
 
@@ -253,7 +253,33 @@ export const LeaveRequest = () => {
           <tr><td class="label">Jenis Pengajuan</td><td>${kindStr}</td></tr>
           <tr><td class="label">Tanggal Pengajuan</td><td>${formattedDate}</td></tr>
           <tr><td class="label">Keterangan / Keperluan</td><td>${req.description || '-'}</td></tr>
-          <tr><td class="label">Status Persetujuan</td><td><strong style="color:#10b981;">Disetujui Semuanya (Approved)</strong></td></tr>
+          <tr><td class="label">Status Akhir</td><td><strong style="color:#10b981;">Disetujui (Approved & Siap Dicaikan)</strong></td></tr>
+        </table>
+
+        <h3 style="font-size:14px; margin-top:20px; margin-bottom:10px; color:#0f172a; border-bottom:1px solid #cbd5e1; padding-bottom:5px;">RIWAYAT PERSETUJUAN ATASAN (APPROVAL PROOF)</h3>
+        <table class="info-table">
+          <thead>
+            <tr style="background:#f1f5f9; text-align:left;">
+              <td style="font-weight:600; padding:8px;">Langkah</td>
+              <td style="font-weight:600; padding:8px;">Atasan / Penyetuju</td>
+              <td style="font-weight:600; padding:8px;">Status</td>
+              <td style="font-weight:600; padding:8px;">Waktu Persetujuan</td>
+            </tr>
+          </thead>
+          <tbody>
+            ${(req.approval_steps && req.approval_steps.length > 0) ? req.approval_steps.map((step: any) => `
+              <tr>
+                <td>Langkah ${step.step_order} (${step.role_required || 'Approver'})</td>
+                <td><strong>${step.actor?.full_name || step.assignee?.full_name || 'Atasan Direct'}</strong></td>
+                <td><span style="color:${step.status === 'Approved' ? '#10b981' : (step.status === 'Skipped' ? '#64748b' : '#f59e0b')}; font-weight:600;">${step.status === 'Approved' ? '✓ Disetujui' : (step.status === 'Skipped' ? 'Dilewati (CEO/N/A)' : 'Menunggu')}</span></td>
+                <td>${step.acted_at ? new Date(step.acted_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+              </tr>
+            `).join('') : `
+              <tr>
+                <td colspan="4" style="text-align:center; color:#64748b;">Disetujui langsung oleh manajemen/sistem</td>
+              </tr>
+            `}
+          </tbody>
         </table>
 
         <div class="footer">
@@ -499,6 +525,8 @@ export const LeaveRequest = () => {
                 const startDateStr = req.start_date || req.startDate;
                 const endDateStr = req.end_date || req.endDate;
                 const typeName = req.leave_type?.name || req.leaveType?.name || 'Cuti';
+                const pendingStep = (req.approval_steps || []).find((s: any) => s.status === 'Pending');
+
                 return (
                   <div key={req.id} className="bg-white p-4 rounded-xl shadow-sm border flex flex-col gap-3">
                     <div className="flex justify-between items-start">
@@ -514,6 +542,32 @@ export const LeaveRequest = () => {
                     <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-600">
                       <span className="font-medium">Alasan:</span> {req.reason}
                     </div>
+
+                    {req.status === 'Pending' && (
+                      <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs">
+                        <div>
+                          <span className="font-semibold text-amber-900">⏳ Menunggu Persetujuan dari:</span>{' '}
+                          <span className="text-amber-800 font-bold">
+                            {pendingStep?.assignee?.full_name || pendingStep?.role_required || 'Atasan Direct'}
+                          </span>
+                          {pendingStep?.step_order ? ` (Langkah ${pendingStep.step_order})` : ''}
+                        </div>
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          size="sm"
+                          className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none shrink-0"
+                          onClick={() => {
+                            const approverName = pendingStep?.assignee?.full_name || 'Bapak/Ibu';
+                            const msg = `Halo ${approverName}, mohon maaf mengganggu. Saya hendak follow up pengajuan Cuti saya yang saat ini sedang menunggu persetujuan Anda. Terima kasih!`;
+                            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                          }}
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 mr-1" />
+                          Follow Up WA
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -528,6 +582,8 @@ export const LeaveRequest = () => {
                 const amountVal = Number(req.amount_idr ?? req.amount ?? 0);
                 const createdDate = req.created_at || req.createdAt;
                 const kindStr = req.kind || req.category || req.type || 'Pengajuan Keuangan';
+                const pendingStep = (req.approval_steps || []).find((s: any) => s.status === 'Pending');
+
                 return (
                   <div key={req.id} className="bg-white p-4 rounded-xl shadow-sm border flex flex-col gap-3">
                     <div className="flex justify-between items-start">
@@ -543,6 +599,33 @@ export const LeaveRequest = () => {
                     <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-600">
                       <span className="font-medium">Keterangan:</span> {req.description}
                     </div>
+
+                    {req.status === 'Pending' && (
+                      <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs">
+                        <div>
+                          <span className="font-semibold text-amber-900">⏳ Menunggu Persetujuan dari:</span>{' '}
+                          <span className="text-amber-800 font-bold">
+                            {pendingStep?.assignee?.full_name || pendingStep?.role_required || 'Atasan Direct'}
+                          </span>
+                          {pendingStep?.step_order ? ` (Langkah ${pendingStep.step_order})` : ''}
+                        </div>
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          size="sm"
+                          className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none shrink-0"
+                          onClick={() => {
+                            const approverName = pendingStep?.assignee?.full_name || 'Bapak/Ibu';
+                            const msg = `Halo ${approverName}, mohon maaf mengganggu. Saya hendak follow up pengajuan Keuangan (Nominal: ${formatRupiah(amountVal)}) saya yang saat ini sedang menunggu persetujuan Anda. Terima kasih!`;
+                            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                          }}
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 mr-1" />
+                          Follow Up WA
+                        </Button>
+                      </div>
+                    )}
+
                     {req.attachments && req.attachments.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-1">
                         {req.attachments.map((att: any, i: number) => (

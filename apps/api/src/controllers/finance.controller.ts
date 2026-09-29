@@ -75,8 +75,13 @@ export class FinanceController {
             where: { request_id: reqst.id, request_type: 'Finance' },
             orderBy: { step_order: 'asc' }
           });
+          const approval_steps = await Promise.all(stepsRaw.map(async (step: any) => {
+            const assignee = step.assigned_to_user_id ? await prisma.user.findUnique({ where: { id: step.assigned_to_user_id }, select: { full_name: true } }) : null;
+            const actor = step.acted_by ? await prisma.user.findUnique({ where: { id: step.acted_by }, select: { full_name: true } }) : null;
+            return { ...step, assignee, actor };
+          }));
 
-          return { ...reqst, attachments, approval_steps: stepsRaw };
+          return { ...reqst, attachments, approval_steps };
         })
       );
 
