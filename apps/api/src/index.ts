@@ -64,8 +64,8 @@ app.post('/api/v1/auth/change-password', requireAuth, AuthController.changePassw
 app.get('/api/v1/auth/me', requireAuth, MeController.getMe);
 
 // Employee Routes
-app.get('/api/v1/employees', requireAuth, requirePermission('employee.read'), EmployeeController.list);
-app.get('/api/v1/employees/:id', requireAuth, requirePermission('employee.read'), EmployeeController.get);
+app.get('/api/v1/employees', requireAuth, EmployeeController.list);
+app.get('/api/v1/employees/:id', requireAuth, EmployeeController.get);
 app.get('/api/v1/employees/:id/effective-shift', requireAuth, EmployeeController.getEffectiveShift || ((req, res) => res.json({})));
 app.post('/api/v1/employees', requireAuth, requirePermission('employee.create'), EmployeeController.create);
 app.put('/api/v1/employees/:id', requireAuth, requirePermission('employee.update'), EmployeeController.update);
@@ -82,8 +82,8 @@ app.get('/api/v1/work-locations/:id', requireAuth, requirePermission('work_locat
 app.post('/api/v1/work-locations', requireAuth, requirePermission('work_location.create'), WorkLocationController.create);
 app.put('/api/v1/work-locations/:id', requireAuth, requirePermission('work_location.update'), WorkLocationController.update);
 
-app.get('/api/v1/leave-types', requireAuth, requirePermission('leave_type.read'), LeaveTypeController.list);
-app.get('/api/v1/leave-types/:id', requireAuth, requirePermission('leave_type.read'), LeaveTypeController.get);
+app.get('/api/v1/leave-types', requireAuth, LeaveTypeController.list);
+app.get('/api/v1/leave-types/:id', requireAuth, LeaveTypeController.get);
 app.post('/api/v1/leave-types', requireAuth, requirePermission('leave_type.create'), LeaveTypeController.create);
 app.put('/api/v1/leave-types/:id', requireAuth, requirePermission('leave_type.update'), LeaveTypeController.update);
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { leaveService, financeService } from '../services/apiService';
+import { leaveService, financeService, employeeService } from '../services/apiService';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,11 @@ export const LeaveRequest = () => {
   const [financeAmount, setFinanceAmount] = useState('');
   const [financeDescription, setFinanceDescription] = useState('');
   const [financeFiles, setFinanceFiles] = useState<FileList | null>(null);
+  const [financeApproverId, setFinanceApproverId] = useState('');
+
+  // Additional Leave State
+  const [leaveApproverId, setLeaveApproverId] = useState('');
+  const [leaveFiles, setLeaveFiles] = useState<FileList | null>(null);
 
   // Queries
   const { data: leaveTypesData } = useQuery({
@@ -45,6 +50,11 @@ export const LeaveRequest = () => {
     queryFn: () => leaveService.getRequests()
   });
 
+  const { data: employeesData } = useQuery({
+    queryKey: ['employees'],
+    queryFn: () => employeeService.getAll()
+  });
+
   const { data: finances } = useQuery({
     queryKey: ['finances', 'my_requests'],
     queryFn: () => financeService.getRequests()
@@ -52,6 +62,7 @@ export const LeaveRequest = () => {
 
   const leaveList = Array.isArray(leaves?.data) ? leaves.data : (Array.isArray(leaves?.data?.data) ? leaves.data.data : []);
   const financeList = Array.isArray(finances?.data) ? finances.data : (Array.isArray(finances?.data?.data) ? finances.data.data : []);
+  const employeeList = Array.isArray(employeesData?.data) ? employeesData.data : (Array.isArray(employeesData?.data?.data) ? employeesData.data.data : []);
 
   // Mutations
   const createLeaveMutation = useMutation({
@@ -64,6 +75,8 @@ export const LeaveRequest = () => {
       setLeaveStart('');
       setLeaveEnd('');
       setLeaveReason('');
+      setLeaveApproverId('');
+      setLeaveFiles(null);
     },
     onError: (err: any) => {
       toast({ title: "Gagal", description: err.response?.data?.message || err.response?.data?.errors?.[0] || "Gagal membuat pengajuan cuti", variant: "destructive" });
@@ -80,6 +93,7 @@ export const LeaveRequest = () => {
       setFinanceAmount('');
       setFinanceDescription('');
       setFinanceFiles(null);
+      setFinanceApproverId('');
     },
     onError: (err: any) => {
       toast({ title: "Gagal", description: err.response?.data?.message || err.response?.data?.errors?.[0] || "Gagal membuat pengajuan keuangan", variant: "destructive" });
@@ -88,12 +102,27 @@ export const LeaveRequest = () => {
 
   const handleLeaveSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createLeaveMutation.mutate({
-      leaveTypeId: leaveType,
-      startDate: `${leaveStart}T00:00:00Z`,
-      endDate: `${leaveEnd}T00:00:00Z`,
-      reason: leaveReason
-    });
+    if (leaveFiles) {
+      const formData = new FormData();
+      formData.append('leaveTypeId', leaveType);
+      formData.append('startDate', `${leaveStart}T00:00:00Z`);
+      formData.append('endDate', `${leaveEnd}T00:00:00Z`);
+      formData.append('reason', leaveReason);
+      if (leaveApproverId) formData.append('approverId', leaveApproverId);
+      
+      Array.from(leaveFiles).forEach(file => {
+        formData.append('attachments', file);
+      });
+      createLeaveMutation.mutate(formData);
+    } else {
+      createLeaveMutation.mutate({
+        leaveTypeId: leaveType,
+        startDate: `${leaveStart}T00:00:00Z`,
+        endDate: `${leaveEnd}T00:00:00Z`,
+        reason: leaveReason,
+        approverId: leaveApproverId
+      });
+    }
   };
 
   const handleFinanceSubmit = (e: React.FormEvent) => {
@@ -102,6 +131,7 @@ export const LeaveRequest = () => {
     formData.append('type', financeType);
     formData.append('amount', financeAmount);
     formData.append('description', financeDescription);
+    if (financeApproverId) formData.append('approverId', financeApproverId);
     if (financeFiles) {
       Array.from(financeFiles).forEach(file => {
         formData.append('attachments', file);
@@ -178,6 +208,25 @@ export const LeaveRequest = () => {
                       <label className="text-sm font-medium">Alasan / Keterangan</label>
                       <Input value={leaveReason} onChange={e => setLeaveReason(e.target.value)} placeholder="Tulis alasan cuti..." required />
                     </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Pilih Atasan (Approver)</label>
+                      <Select value={leaveApproverId} onValueChange={setLeaveApproverId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih atasan untuk approval" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {employeeList?.map((emp: any) => (
+                            <SelectItem key={emp.id} value={emp.id}>{emp.full_name || emp.id}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Lampiran Bukti (Sakit / Opsional)</label>
+                      <FileUpload accept="image/*,.pdf" multiple onFilesChange={setLeaveFiles} />
+                    </div>
                     
                     <Button type="submit" className="w-full" disabled={createLeaveMutation.isPending}>
                       {createLeaveMutation.isPending ? "Menyimpan..." : "Ajukan Cuti"}
@@ -208,6 +257,20 @@ export const LeaveRequest = () => {
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Keterangan</label>
                       <Input value={financeDescription} onChange={e => setFinanceDescription(e.target.value)} placeholder="Tulis keperluan..." required />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Pilih Atasan (Approver)</label>
+                      <Select value={financeApproverId} onValueChange={setFinanceApproverId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih atasan untuk approval" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {employeeList?.map((emp: any) => (
+                            <SelectItem key={emp.id} value={emp.id}>{emp.full_name || emp.id}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     
                     <div className="space-y-2">
