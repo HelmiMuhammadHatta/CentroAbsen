@@ -153,8 +153,8 @@ export class AuthController {
   static async revokeSession(req: AuthRequest, res: Response) {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-      const { id } = req.params;
-      await AuthService.revokeSession(req.user.id, id);
+      const targetId = req.params.id as string;
+      await AuthService.revokeSession(req.user.id, targetId);
       res.json({ message: 'Sesi berhasil dicabut' });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

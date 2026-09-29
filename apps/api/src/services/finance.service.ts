@@ -144,7 +144,7 @@ export class FinanceService {
         step_order: 1,
         role_required: 'finance.approve.manager',
         assigned_to_user_id: managerId,
-        status: step1Status,
+        status: step1Status as any,
         note: step1Note
       });
 
@@ -166,7 +166,7 @@ export class FinanceService {
         step_order: 2,
         role_required: 'finance.approve.executive',
         assigned_to_user_id: ceoUserId,
-        status: step2Status,
+        status: step2Status as any,
         note: step2Note
       });
 
@@ -177,7 +177,7 @@ export class FinanceService {
         step_order: 3,
         role_required: 'finance.disburse',
         assigned_to_user_id: null,
-        status: isRequesterCeo ? 'Pending' : 'Pending',
+        status: 'Pending' as any,
         note: null
       });
 

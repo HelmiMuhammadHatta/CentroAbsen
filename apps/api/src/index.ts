@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import pino from 'pino-http';
 import cookieParser from 'cookie-parser';
+import { AttendanceService } from './services/attendance.service';
+import { ReportController } from './controllers/report.controller';
 import { initAttendanceJob } from './jobs/attendance.job';
 import { initPhotoRetentionJob } from './jobs/photo_retention.job';
 import fs from 'fs';

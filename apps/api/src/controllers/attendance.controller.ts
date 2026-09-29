@@ -321,7 +321,7 @@ export class AttendanceController {
   static async reviewFlag(req: Request, res: Response) {
     try {
       const reviewerUserId = (req as any).user.id;
-      const { flagId } = req.params;
+      const flagId = req.params.flagId as string;
       const { note } = req.body;
 
       if (!note || note.trim().length < 3) {
