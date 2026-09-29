@@ -7,7 +7,9 @@ export class AttachmentController {
   static async download(req: Request, res: Response) {
     try {
       const userId = (req as any).user.id;
-      const userRoles = (req as any).user.roles.map((r: any) => r.role.name);
+      const userRoles = Array.isArray((req as any).user?.roles) 
+        ? (req as any).user.roles 
+        : [];
       const id = req.params.id as string;
 
       const attachment = await prisma.requestAttachment.findUnique({ where: { id } });

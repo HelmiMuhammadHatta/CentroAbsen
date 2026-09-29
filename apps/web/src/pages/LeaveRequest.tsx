@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FileUpload } from '@/components/ui/file-upload';
-import { Plus, Inbox, FileText, Calendar as CalendarIcon, Trash2, Check, X } from 'lucide-react';
+import { Plus, Inbox, FileText, Calendar as CalendarIcon, Trash2, Check, X, Printer } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { formatRupiah } from '@/lib/formatters';
 
@@ -202,9 +202,87 @@ export const LeaveRequest = () => {
     });
   };
 
+  const handlePrintFinancePdf = (req: any) => {
+    const amountVal = Number(req.amount_idr ?? req.amount ?? 0);
+    const createdDate = req.created_at || req.createdAt;
+    const formattedDate = createdDate ? new Date(createdDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+    const requesterName = req.user?.full_name || user?.fullName || 'Karyawan';
+    const requesterNik = req.user?.nik || user?.nik || '-';
+    const kindStr = req.kind || req.category || 'Reimbursement';
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Bukti Persetujuan Keuangan - ${req.id}</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; }
+          .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 25px; }
+          .header h1 { margin: 0; font-size: 24px; color: #0f172a; text-transform: uppercase; letter-spacing: 1px; }
+          .header p { margin: 4px 0 0; font-size: 13px; color: #64748b; }
+          .status-badge { display: inline-block; background: #10b981; color: white; padding: 6px 16px; border-radius: 20px; font-weight: bold; font-size: 14px; margin-top: 10px; }
+          .info-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+          .info-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+          .info-table td.label { font-weight: 600; color: #475569; width: 35%; background: #f8fafc; }
+          .amount-box { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 25px; }
+          .amount-box .val { font-size: 26px; font-weight: bold; color: #15803d; }
+          .footer { margin-top: 50px; display: flex; justify-content: space-between; text-align: center; }
+          .sig-box { width: 45%; }
+          .sig-space { height: 70px; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>CentroAbsen HRIS</h1>
+          <p>SURAT BUKTI PERSETUJUAN PENGAJUAN KEUANGAN</p>
+          <div class="status-badge">✓ TELAH DISETUJUI & SIAP DICAIRKAN</div>
+        </div>
+
+        <div class="amount-box">
+          <div style="font-size: 12px; color: #166534; font-weight: 600;">TOTAL NOMINAL PENGAJUAN</div>
+          <div class="val">Rp ${new Intl.NumberFormat('id-ID').format(amountVal)}</div>
+        </div>
+
+        <table class="info-table">
+          <tr><td class="label">ID Pengajuan</td><td><strong>${req.id}</strong></td></tr>
+          <tr><td class="label">Nama Pemohon</td><td>${requesterName} (${requesterNik})</td></tr>
+          <tr><td class="label">Jenis Pengajuan</td><td>${kindStr}</td></tr>
+          <tr><td class="label">Tanggal Pengajuan</td><td>${formattedDate}</td></tr>
+          <tr><td class="label">Keterangan / Keperluan</td><td>${req.description || '-'}</td></tr>
+          <tr><td class="label">Status Persetujuan</td><td><strong style="color:#10b981;">Disetujui Semuanya (Approved)</strong></td></tr>
+        </table>
+
+        <div class="footer">
+          <div class="sig-box">
+            <p>Pemohon,</p>
+            <div class="sig-space"></div>
+            <p><strong>${requesterName}</strong></p>
+          </div>
+          <div class="sig-box">
+            <p>Disetujui Oleh (Keuangan/Atasan),</p>
+            <div class="sig-space"></div>
+            <p><strong>Tim Keuangan & Manajemen</strong></p>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() { window.print(); }
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Approved':
+      case 'MenungguPencairan':
+      case 'Dicairkan':
         return <Badge className="bg-emerald-500/10 text-emerald-600 font-semibold border-none">Disetujui</Badge>;
       case 'Rejected':
         return <Badge className="bg-rose-500/10 text-rose-600 font-semibold border-none">Ditolak</Badge>;
@@ -470,6 +548,19 @@ export const LeaveRequest = () => {
                         {req.attachments.map((att: any, i: number) => (
                            <Badge key={i} variant="outline" className="text-[10px]">Lampiran {i+1}</Badge>
                         ))}
+                      </div>
+                    )}
+                    {['Approved', 'MenungguPencairan', 'Dicairkan'].includes(req.status) && (
+                      <div className="pt-2 border-t flex justify-end">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100"
+                          onClick={() => handlePrintFinancePdf(req)}
+                        >
+                          <Printer className="w-4 h-4 mr-2" />
+                          Cetak / PDF Bukti ACC
+                        </Button>
                       </div>
                     )}
                   </div>

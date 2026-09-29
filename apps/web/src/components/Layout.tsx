@@ -18,8 +18,9 @@ export const Layout = () => {
   const displayName = user?.fullName ?? user?.email?.split('@')[0] ?? 'User';
 
   const { data: notificationsData } = useQuery({
-    queryKey: ['notifications'],
+    queryKey: ['notifications', user?.id],
     queryFn: () => notificationService.getAll(),
+    enabled: !!user?.id,
     refetchInterval: 10000
   });
 

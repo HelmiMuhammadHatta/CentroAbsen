@@ -63,7 +63,9 @@ export class ApprovalController {
   static async act(req: Request, res: Response) {
     try {
       const actorId = (req as any).user.id;
-      const actorRoles = (req as any).user.roles.map((r: any) => r.role.name);
+      const actorRoles = Array.isArray((req as any).user?.roles) 
+        ? (req as any).user.roles 
+        : [];
       const { requestType, requestId, action, note } = req.body;
 
       if (!['Leave', 'Finance'].includes(requestType)) return res.status(400).json({ error: 'Tipe pengajuan tidak valid' });
