@@ -544,28 +544,12 @@ export const LeaveRequest = () => {
                     </div>
 
                     {req.status === 'Pending' && (
-                      <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs">
-                        <div>
-                          <span className="font-semibold text-amber-900">⏳ Menunggu Persetujuan dari:</span>{' '}
-                          <span className="text-amber-800 font-bold">
-                            {pendingStep?.assignee?.full_name || pendingStep?.role_required || 'Atasan Direct'}
-                          </span>
-                          {pendingStep?.step_order ? ` (Langkah ${pendingStep.step_order})` : ''}
-                        </div>
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          size="sm"
-                          className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none shrink-0"
-                          onClick={() => {
-                            const approverName = pendingStep?.assignee?.full_name || 'Bapak/Ibu';
-                            const msg = `Halo ${approverName}, mohon maaf mengganggu. Saya hendak follow up pengajuan Cuti saya yang saat ini sedang menunggu persetujuan Anda. Terima kasih!`;
-                            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-                          }}
-                        >
-                          <MessageCircle className="w-3.5 h-3.5 mr-1" />
-                          Follow Up WA
-                        </Button>
+                      <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-lg text-xs">
+                        <span className="font-semibold text-amber-900">⏳ Menunggu Persetujuan dari:</span>{' '}
+                        <span className="text-amber-800 font-bold">
+                          {pendingStep?.assignee?.full_name || pendingStep?.role_required || 'Atasan Direct'}
+                        </span>
+                        {pendingStep?.step_order ? ` (Langkah ${pendingStep.step_order})` : ''}
                       </div>
                     )}
                   </div>
@@ -601,28 +585,12 @@ export const LeaveRequest = () => {
                     </div>
 
                     {req.status === 'Pending' && (
-                      <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs">
-                        <div>
-                          <span className="font-semibold text-amber-900">⏳ Menunggu Persetujuan dari:</span>{' '}
-                          <span className="text-amber-800 font-bold">
-                            {pendingStep?.assignee?.full_name || pendingStep?.role_required || 'Atasan Direct'}
-                          </span>
-                          {pendingStep?.step_order ? ` (Langkah ${pendingStep.step_order})` : ''}
-                        </div>
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          size="sm"
-                          className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none shrink-0"
-                          onClick={() => {
-                            const approverName = pendingStep?.assignee?.full_name || 'Bapak/Ibu';
-                            const msg = `Halo ${approverName}, mohon maaf mengganggu. Saya hendak follow up pengajuan Keuangan (Nominal: ${formatRupiah(amountVal)}) saya yang saat ini sedang menunggu persetujuan Anda. Terima kasih!`;
-                            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-                          }}
-                        >
-                          <MessageCircle className="w-3.5 h-3.5 mr-1" />
-                          Follow Up WA
-                        </Button>
+                      <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-lg text-xs">
+                        <span className="font-semibold text-amber-900">⏳ Menunggu Persetujuan dari:</span>{' '}
+                        <span className="text-amber-800 font-bold">
+                          {pendingStep?.assignee?.full_name || pendingStep?.role_required || 'Atasan Direct'}
+                        </span>
+                        {pendingStep?.step_order ? ` (Langkah ${pendingStep.step_order})` : ''}
                       </div>
                     )}
 
