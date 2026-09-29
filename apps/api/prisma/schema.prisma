@@ -102,6 +102,7 @@ model User {
   photo_path                String?
   failed_login_count        Int       @default(0)
   locked_until              DateTime?
+  must_change_password      Boolean   @default(false)
 
   created_at                DateTime  @default(now())
   updated_at                DateTime  @updatedAt
@@ -117,6 +118,7 @@ model User {
   leave_balances        LeaveBalance[]
   leave_requests        LeaveRequest[]
   finance_requests      FinanceRequest[]
+  disbursements         FinanceDisbursement[] @relation("DisbursedByUser")
   employee_documents    EmployeeDocument[]
   refresh_tokens        RefreshToken[]
   password_reset_tokens PasswordResetToken[]
@@ -218,10 +220,14 @@ model Attendance {
 }
 
 model AttendanceFlag {
-  id            String   @id @default(uuid()) @db.Char(36)
-  attendance_id String   @db.Char(36)
+  id            String    @id @default(uuid()) @db.Char(36)
+  attendance_id String    @db.Char(36)
   flag          String
-  created_at    DateTime @default(now())
+  is_reviewed   Boolean   @default(false)
+  review_note   String?
+  reviewed_by   String?   @db.Char(36)
+  reviewed_at   DateTime?
+  created_at    DateTime  @default(now())
 
   attendance Attendance @relation(fields: [attendance_id], references: [id], onDelete: Cascade)
 
@@ -294,21 +300,43 @@ model LeaveRequest {
 }
 
 model FinanceRequest {
-  id           String             @id @default(uuid()) @db.Char(36)
-  user_id      String             @db.Char(36)
-  kind         FinanceRequestKind
-  category     String
-  amount_idr   Decimal            @db.Decimal(18,2)
-  description  String
-  status       RequestStatus
-  cancelled_at DateTime?
+  id               String             @id @default(uuid()) @db.Char(36)
+  user_id          String             @db.Char(36)
+  kind             FinanceRequestKind
+  category         String
+  amount_idr       Decimal            @db.Decimal(18,2)
+  description      String
+  status           String
+  is_ceo_submitted Boolean            @default(false)
+  cancelled_at     DateTime?
 
-  created_at   DateTime           @default(now())
-  updated_at   DateTime           @updatedAt
+  created_at       DateTime           @default(now())
+  updated_at       DateTime           @updatedAt
 
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user         User                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  disbursement FinanceDisbursement?
 
   @@map("finance_requests")
+}
+
+model FinanceDisbursement {
+  id                 String   @id @default(uuid()) @db.Char(36)
+  finance_request_id String   @unique @db.Char(36)
+  disbursed_by       String   @db.Char(36)
+  disbursed_at       DateTime @default(now())
+  method             String
+  reference_no       String?
+  amount_idr         Decimal  @db.Decimal(18,2)
+  note               String?
+  proof_file_path    String?
+
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  finance_request   FinanceRequest @relation(fields: [finance_request_id], references: [id], onDelete: Cascade)
+  disbursed_by_user User           @relation("DisbursedByUser", fields: [disbursed_by], references: [id], onDelete: Cascade)
+
+  @@map("finance_disbursements")
 }
 
 model RequestAttachment {

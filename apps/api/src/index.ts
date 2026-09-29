@@ -105,15 +105,50 @@ app.post('/api/v1/leaves/submit', requireAuth, requireCsrf, upload.array('attach
 app.get('/api/v1/leaves', requireAuth, LeaveController.list);
 app.post('/api/v1/leaves/:id/cancel', requireAuth, requireCsrf, LeaveController.cancel);
 
-// Finance Routes
-app.get('/api/v1/finances/summary', requireAuth, requirePermission('finance.approve'), FinanceController.financeSummary);
+// Finance Routes (Tahap 6: Pemohon -> Atasan -> CEO -> Keuangan)
+app.post('/api/v1/finance-requests', requireAuth, requireCsrf, upload.array('attachments', 5), FinanceController.submit);
 app.post('/api/v1/finances/submit', requireAuth, requireCsrf, upload.array('attachments', 5), FinanceController.submit);
+app.get('/api/v1/finance-requests', requireAuth, FinanceController.list);
 app.get('/api/v1/finances', requireAuth, FinanceController.list);
-app.post('/api/v1/finances/:id/cancel', requireAuth, requireCsrf, FinanceController.cancel);
 
-// Approvals
+app.get('/api/v1/finance-requests/ceo-queue', requireAuth, requirePermission('finance.approve.executive'), FinanceController.ceoQueue);
+app.get('/api/v1/finance-requests/ceo-summary', requireAuth, requirePermission('finance.approve.executive'), FinanceController.ceoSummary);
+app.get('/api/v1/finance-requests/finance-queue', requireAuth, requirePermission('finance.disburse'), FinanceController.financeQueue);
+app.get('/api/v1/finance-requests/finance-summary', requireAuth, requirePermission('finance.disburse'), FinanceController.financeSummary);
+app.get('/api/v1/finances/summary', requireAuth, requirePermission('finance.disburse'), FinanceController.financeSummary);
+
+app.get('/api/v1/finance-requests/:id', requireAuth, FinanceController.getDetail);
+app.get('/api/v1/finances/:id', requireAuth, FinanceController.getDetail);
+app.post('/api/v1/finance-requests/:id/approve', requireAuth, requireCsrf, FinanceController.approve);
+app.post('/api/v1/finance-requests/:id/reject', requireAuth, requireCsrf, FinanceController.reject);
+app.post('/api/v1/finance-requests/:id/disburse', requireAuth, requireCsrf, upload.single('proof'), FinanceController.disburse);
+app.post('/api/v1/finance-requests/:id/cancel', requireAuth, requireCsrf, FinanceController.cancel);
+app.post('/api/v1/finances/:id/cancel', requireAuth, requireCsrf, FinanceController.cancel);
+app.post('/api/v1/finance-requests/:id/reassign', requireAuth, requirePermission('employee.delete'), FinanceController.reassign);
+
+// Auth Sessions
+app.get('/api/v1/auth/sessions', requireAuth, AuthController.listSessions);
+app.delete('/api/v1/auth/sessions/:id', requireAuth, requireCsrf, AuthController.revokeSession);
+
+// Attendance Flags & Monthly Summary
+app.post('/api/v1/attendances/flags/:flagId/review', requireAuth, requirePermission('attendance.flag.review'), AttendanceController.reviewFlag);
+app.get('/api/v1/attendances/monthly-summary', requireAuth, (req, res) => {
+  const { userId, month, year } = req.query;
+  const uid = (userId as string) || (req as any).user.id;
+  AttendanceService.getMonthlySummary(uid, Number(month || new Date().getMonth() + 1), Number(year || new Date().getFullYear()))
+    .then(data => res.json({ data }))
+    .catch(err => res.status(500).json({ error: err.message }));
+});
+
+// Approvals Inbox
+app.get('/api/v1/approvals/inbox', requireAuth, ApprovalController.inbox);
+app.get('/api/v1/approvals/inbox/count', requireAuth, ApprovalController.inboxCount);
 app.get('/api/v1/approvals/queue', requireAuth, ApprovalController.listQueue);
 app.post('/api/v1/approvals/act', requireAuth, requireCsrf, ApprovalController.act);
+
+// Reports
+app.get('/api/v1/reports/attendance', requireAuth, ReportController.exportAttendance);
+app.get('/api/v1/reports/finance', requireAuth, ReportController.exportFinance);
 
 // Notifications
 app.get('/api/v1/notifications', requireAuth, NotificationController.list);

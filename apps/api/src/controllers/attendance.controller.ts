@@ -317,4 +317,21 @@ export class AttendanceController {
       res.status(500).json({ error: e.message });
     }
   }
+
+  static async reviewFlag(req: Request, res: Response) {
+    try {
+      const reviewerUserId = (req as any).user.id;
+      const { flagId } = req.params;
+      const { note } = req.body;
+
+      if (!note || note.trim().length < 3) {
+        return res.status(400).json({ error: 'Catatan peninjauan wajib diisi (min. 3 karakter)' });
+      }
+
+      const updatedFlag = await AttendanceService.reviewFlag(reviewerUserId, flagId, note);
+      res.json({ message: 'Flag absensi berhasil ditinjau', data: updatedFlag });
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
+    }
+  }
 }

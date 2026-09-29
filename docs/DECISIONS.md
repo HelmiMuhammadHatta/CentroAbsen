@@ -27,6 +27,15 @@ Dokumen ini mencatat keputusan-keputusan teknis dan desain arsitektur yang diamb
 - **Keputusan 5.1 (Foto & Lampiran Privat)**: Menghentikan penyajian publik `express.static('/uploads')`. Foto presensi kini hanya dapat diakses melalui endpoint terotorisasi `GET /api/v1/attendances/:id/photo`.
 - **Alasan 5.1**: Mencegah kebocoran privasi foto karyawan ke publik melalui URL statis tak terotentikasi.
 - **Implementasi 5.1**: Endpoint memeriksa otorisasi pemanggil (`Owner`, `Direct Manager`, atau `HR/Admin`). Menambahkan header `Cache-Control: private, max-age=3600`, `X-Content-Type-Options: nosniff`, dan `Cross-Origin-Resource-Policy: same-origin`.
-- **Keputusan 5.2 (Pemusatan Geocoding Backend)**: Menghapus panggilan API Nominatim langsung dari browser client.
-- **Alasan 5.2**: Mencegah kebebasan pencatatan alamat luar yang dapat memicu kebocoran IP client ke server pihak ketiga serta mengurangi dependensi jaringan di sisi browser.
 - **Implementasi 5.2**: Label lokasi dibuat dari master `PrimaryWorkLocation` (mode Office) atau label `"Lokasi lain (lat, lon)"`. Backend juga dilengkapi flag opsional `GEOCODING_ENABLED=true` dengan penanganan fail-safe yang tidak akan menggagalkan absen jika rute geocoding mengalami kendala.
+
+## 6. Tahap 5 — Desain Sistem, Layout Mobile-First, dan PWA
+- **Keputusan 6.1 (Desain Sistem & Layout)**: Mengadopsi Shadcn UI dengan Tailwind CSS untuk mempercepat pembuatan komponen konsisten dengan Plus Jakarta Sans. Layout dipisah jadi Bottom Navigation untuk Mobile dan Sidebar ringkas untuk Desktop.
+- **Keputusan 6.2 (Absen & Pengajuan)**: Modul absensi diubah untuk menampilkan UI kamera dan peta secara terpadu. Pengajuan disederhanakan dengan fitur *Drawer* dan 2 Tab (Cuti, Keuangan).
+
+## 7. Tahap 6 — Alur Approval Keuangan (Atasan, CEO, Keuangan)
+- **Keputusan 7.1 (Alur Baru 4 Langkah)**: Mengimplementasikan alur pengajuan keuangan 4 langkah: Pemohon -> Atasan -> CEO -> Keuangan (Pencairan).
+- **Keputusan 7.2 (Pencairan & Compare-and-Set)**: Tabel `finance_disbursements` menyimpan snapshot transaksi pencairan. Status diubah secara atomik menggunakan compare-and-set (`WHERE status = 'MenungguPencairan'`) untuk mencegah pencairan ganda/paralel.
+- **Keputusan 7.3 (Pemohon CEO & Flag `is_ceo_submitted`)**: Jika pemohon adalah CEO, langkah Atasan & CEO otomatis ditandai `Skipped` dan pengajuan langsung menuju status `MenungguPencairan` dengan flag `is_ceo_submitted = true` yang ditampilkan di antarmuka Keuangan.
+- **Keputusan 7.4 (Proteksi Self-Disbursement)**: Pengguna berperan Keuangan (`finance.disburse`) dilarang keras mencairkan dana dari pengajuan yang mereka buat sendiri.
+- **Keputusan 7.5 (Depresiasi Kasbon)**: Fitur "Cash Advance" (kasbon) dinonaktifkan untuk pengajuan baru, namun data lama tetap dipertahankan secara utuh di database.

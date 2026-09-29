@@ -101,4 +101,67 @@ export class EmployeeService {
       }
     });
   }
+
+  static async importCsv(csvContent: string) {
+    const lines = csvContent.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length < 2) throw new Error('File CSV kosong atau tidak memiliki baris data');
+
+    const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const nikIdx = header.indexOf('nik');
+    const nameIdx = header.indexOf('full_name') !== -1 ? header.indexOf('full_name') : header.indexOf('nama');
+    const emailIdx = header.indexOf('email');
+
+    if (nikIdx === -1 || nameIdx === -1 || emailIdx === -1) {
+      throw new Error('Header CSV wajib mengandung kolom nik, full_name/nama, dan email');
+    }
+
+    const successList = [];
+    const failedList = [];
+    const defaultPasswordHash = await argon2.hash('password123');
+
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+      const nik = cols[nikIdx];
+      const full_name = cols[nameIdx];
+      const email = cols[emailIdx];
+
+      if (!nik || !full_name || !email) {
+        failedList.push({ line: i + 1, data: lines[i], reason: 'Kolom NIK, nama, atau email kosong' });
+        continue;
+      }
+
+      try {
+        const existing = await prisma.user.findFirst({
+          where: { OR: [{ nik }, { email }] }
+        });
+        if (existing) {
+          failedList.push({ line: i + 1, data: lines[i], reason: 'NIK atau Email sudah digunakan' });
+          continue;
+        }
+
+        const newUser = await prisma.user.create({
+          data: {
+            nik,
+            full_name,
+            email,
+            password_hash: defaultPasswordHash,
+            must_change_password: true,
+            work_arrangement: 'Office'
+          }
+        });
+
+        successList.push(newUser);
+      } catch (e: any) {
+        failedList.push({ line: i + 1, data: lines[i], reason: e.message });
+      }
+    }
+
+    return {
+      total: lines.length - 1,
+      successCount: successList.length,
+      failedCount: failedList.length,
+      successList,
+      failedList
+    };
+  }
 }

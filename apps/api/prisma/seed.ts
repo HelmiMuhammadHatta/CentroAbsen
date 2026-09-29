@@ -1,4 +1,4 @@
-import { PrismaClient, WorkArrangement, WorkMode, AttendanceType, RequestStatus, FinanceRequestKind, Gender } from '@prisma/client';
+import { PrismaClient, WorkArrangement, Gender } from '@prisma/client';
 import * as argon2 from 'argon2';
 
 const prisma = new PrismaClient();
@@ -11,6 +11,12 @@ async function main() {
     where: { key: 'photo_retention_months' },
     update: {},
     create: { key: 'photo_retention_months', value: '3' },
+  });
+
+  await prisma.appSetting.upsert({
+    where: { key: 'finance_ceo_threshold_idr' },
+    update: {},
+    create: { key: 'finance_ceo_threshold_idr', value: '0' },
   });
 
   // 2. Work Locations
@@ -32,22 +38,24 @@ async function main() {
   const divOperations = await prisma.department.create({ data: { name: 'Operations' } });
   const divFinance = await prisma.department.create({ data: { name: 'Finance' } });
   const divHR = await prisma.department.create({ data: { name: 'Human Resources' } });
+  const divExec = await prisma.department.create({ data: { name: 'Executive' } });
 
   // 4. Leave Types
   await prisma.leaveType.createMany({
     data: [
-      { name: 'Cuti Tahunan', annual_quota_days: 12, eligible_gender: Gender.All },
-      { name: 'Cuti Sakit', annual_quota_days: 0, requires_attachment: true, eligible_gender: Gender.All },
+      { name: 'Cuti Tahunan', annual_quota_days: 12 },
+      { name: 'Cuti Sakit', annual_quota_days: 0, requires_attachment: true },
       { name: 'Cuti Melahirkan', annual_quota_days: 90, requires_hr_approval: true, eligible_gender: Gender.Female },
-      { name: 'Cuti Penting', annual_quota_days: 0, eligible_gender: Gender.All },
+      { name: 'Cuti Penting', annual_quota_days: 0 },
     ],
   });
 
-  // 5. Roles & Permissions (Based on EMS)
+  // 5. Roles & Permissions (Based on EMS + Tahap 6)
   const permissions = [
     'employee.read', 'employee.create', 'employee.update', 'employee.delete',
     'leave.read', 'leave.create', 'leave.approve',
     'finance.read', 'finance.create', 'finance.approve',
+    'finance.approve.manager', 'finance.approve.executive', 'finance.disburse', 'finance.reassign',
     'attendance.read', 'attendance.create', 'attendance.report'
   ];
   
@@ -69,26 +77,52 @@ async function main() {
   const roleManager = await prisma.role.create({
     data: {
       name: 'Manager',
-      permissions: { create: getPermIds(['employee.read', 'leave.read', 'leave.create', 'leave.approve', 'finance.read', 'finance.create', 'finance.approve', 'attendance.read', 'attendance.create']) }
+      permissions: { create: getPermIds(['employee.read', 'leave.read', 'leave.create', 'leave.approve', 'finance.read', 'finance.create', 'finance.approve', 'finance.approve.manager', 'attendance.read', 'attendance.create']) }
+    }
+  });
+
+  const roleExecutive = await prisma.role.create({
+    data: {
+      name: 'Executive',
+      permissions: { create: getPermIds(['employee.read', 'leave.read', 'leave.approve', 'finance.read', 'finance.approve', 'finance.approve.executive', 'attendance.read']) }
     }
   });
 
   const roleFinance = await prisma.role.create({
     data: {
       name: 'Finance',
-      permissions: { create: getPermIds(['employee.read', 'finance.read', 'finance.approve', 'attendance.read']) }
+      permissions: { create: getPermIds(['employee.read', 'finance.read', 'finance.approve', 'finance.disburse', 'attendance.read']) }
     }
   });
 
   const roleHrAdmin = await prisma.role.create({
     data: {
       name: 'HrAdmin',
-      permissions: { create: getPermIds(permissions) } // all perms
+      permissions: { create: getPermIds(permissions) }
     }
   });
 
   // 6. Users
   const passwordHash = await argon2.hash('password123');
+
+  const ceo = await prisma.user.create({
+    data: {
+      nik: 'CEO001',
+      full_name: 'Hatta CEO',
+      email: 'ceo@centroabsen.local',
+      password_hash: passwordHash,
+      department_id: divExec.id,
+      primary_work_location_id: hq.id,
+      work_arrangement: WorkArrangement.Office,
+      roles: { create: [{ role_id: roleExecutive.id }] }
+    }
+  });
+
+  await prisma.appSetting.upsert({
+    where: { key: 'finance_ceo_user_id' },
+    update: { value: ceo.id },
+    create: { key: 'finance_ceo_user_id', value: ceo.id },
+  });
 
   const hrAdmin = await prisma.user.create({
     data: {
@@ -122,6 +156,7 @@ async function main() {
       full_name: 'Andi Pratama',
       email: 'andi.mgr@centroabsen.local',
       password_hash: passwordHash,
+      manager_id: ceo.id,
       department_id: divProduct.id,
       primary_work_location_id: hq.id,
       work_arrangement: WorkArrangement.Hybrid,

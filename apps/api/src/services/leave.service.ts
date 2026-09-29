@@ -113,4 +113,43 @@ export class LeaveService {
       return request;
     });
   }
+
+  static async cancelLeaveRequest(userId: string, requestId: string, isHrOrAdmin: boolean) {
+    return await prisma.$transaction(async (tx) => {
+      const request = await tx.leaveRequest.findUnique({ where: { id: requestId } });
+      if (!request) throw new Error('Pengajuan cuti tidak ditemukan');
+
+      if (!isHrOrAdmin && request.user_id !== userId) {
+        throw new Error('Akses ditolak');
+      }
+
+      if (!isHrOrAdmin && request.status !== RequestStatus.Pending) {
+        throw new Error('Hanya dapat membatalkan pengajuan yang masih berstatus Pending');
+      }
+
+      if (request.status === RequestStatus.Approved) {
+        if (!isHrOrAdmin) {
+          throw new Error('Pengajuan yang sudah disetujui hanya dapat dibatalkan oleh HR / Admin');
+        }
+
+        // Refund balance
+        await tx.leaveBalance.updateMany({
+          where: {
+            user_id: request.user_id,
+            leave_type_id: request.leave_type_id,
+            year: request.start_date.getFullYear()
+          },
+          data: {
+            used: { decrement: request.total_work_days },
+            quota: { increment: request.total_work_days }
+          }
+        });
+      }
+
+      return await tx.leaveRequest.update({
+        where: { id: requestId },
+        data: { status: RequestStatus.Rejected, cancelled_at: new Date() }
+      });
+    });
+  }
 }

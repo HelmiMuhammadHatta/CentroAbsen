@@ -176,7 +176,6 @@ export class AttendanceService {
       return attendance;
     } catch (e: any) {
       if (e.code === 'P2002') {
-        // Cek apakah karena idempotency key
         const existingIdemp = await prisma.attendance.findUnique({ where: { idempotency_key: data.idempotencyKey } });
         if (existingIdemp) return existingIdemp;
         
@@ -184,5 +183,81 @@ export class AttendanceService {
       }
       throw e;
     }
+  }
+
+  static async getMonthlySummary(userId: string, month: number, year: number) {
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    const endDate = new Date(Date.UTC(year, month, 0));
+
+    const attendances = await prisma.attendance.findMany({
+      where: {
+        user_id: userId,
+        work_date: { gte: startDate, lte: endDate }
+      }
+    });
+
+    const checkIns = attendances.filter(a => a.type === 'CheckIn');
+    const checkOuts = attendances.filter(a => a.type === 'CheckOut');
+
+    const hadirCount = checkIns.length;
+    const terlambatCount = checkIns.filter(a => a.status === 'Terlambat').length;
+    
+    // CheckIn days without CheckOut
+    const checkInDates = new Set(checkIns.map(a => a.work_date.toISOString().split('T')[0]));
+    const checkOutDates = new Set(checkOuts.map(a => a.work_date.toISOString().split('T')[0]));
+    
+    let belumAbsenKeluarCount = 0;
+    for (const d of checkInDates) {
+      if (!checkOutDates.has(d)) belumAbsenKeluarCount++;
+    }
+
+    // Work days in month
+    let workDaysCount = 0;
+    let curr = new Date(startDate);
+    while (curr <= endDate) {
+      const day = curr.getUTCDay();
+      if (day !== 0 && day !== 6) {
+        workDaysCount++;
+      }
+      curr.setUTCDate(curr.getUTCDate() + 1);
+    }
+
+    // Approved Leaves
+    const leaves = await prisma.leaveRequest.findMany({
+      where: {
+        user_id: userId,
+        status: 'Approved',
+        start_date: { lte: endDate },
+        end_date: { gte: startDate }
+      }
+    });
+
+    const leaveDaysCount = leaves.reduce((acc, l) => acc + l.total_work_days, 0);
+    const tidakHadirCount = Math.max(0, workDaysCount - hadirCount - leaveDaysCount);
+
+    return {
+      month,
+      year,
+      hadir: hadirCount,
+      terlambat: terlambatCount,
+      tidak_hadir: tidakHadirCount,
+      belum_absen_keluar: belumAbsenKeluarCount,
+      total_hari_kerja: workDaysCount
+    };
+  }
+
+  static async reviewFlag(reviewerUserId: string, flagId: string, reviewNote: string) {
+    const flag = await prisma.attendanceFlag.findUnique({ where: { id: flagId } });
+    if (!flag) throw new Error('Flag absensi tidak ditemukan');
+
+    return await prisma.attendanceFlag.update({
+      where: { id: flagId },
+      data: {
+        is_reviewed: true,
+        review_note: reviewNote,
+        reviewed_by: reviewerUserId,
+        reviewed_at: new Date()
+      }
+    });
   }
 }

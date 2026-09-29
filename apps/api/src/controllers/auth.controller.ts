@@ -139,4 +139,25 @@ export class AuthController {
       res.status(400).json({ error: error.message });
     }
   }
+
+  static async listSessions(req: AuthRequest, res: Response) {
+    try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+      const sessions = await AuthService.listSessions(req.user.id);
+      res.json({ data: sessions });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async revokeSession(req: AuthRequest, res: Response) {
+    try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+      const { id } = req.params;
+      await AuthService.revokeSession(req.user.id, id);
+      res.json({ message: 'Sesi berhasil dicabut' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
 }

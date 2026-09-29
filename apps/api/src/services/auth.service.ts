@@ -193,9 +193,32 @@ export class AuthService {
     const newPasswordHash = await argon2.hash(newPasswordPlain);
     await prisma.user.update({
       where: { id: userId },
-      data: { password_hash: newPasswordHash }
+      data: { password_hash: newPasswordHash, must_change_password: false }
     });
 
     await this.revokeAllUserTokens(userId);
+  }
+
+  static async listSessions(userId: string) {
+    return await prisma.refreshToken.findMany({
+      where: { user_id: userId, revoked_at: null, expires_at: { gt: new Date() } },
+      orderBy: { created_at: 'desc' },
+      select: {
+        id: true,
+        family_id: true,
+        created_at: true,
+        expires_at: true
+      }
+    });
+  }
+
+  static async revokeSession(userId: string, targetId: string) {
+    await prisma.refreshToken.updateMany({
+      where: {
+        user_id: userId,
+        OR: [{ id: targetId }, { family_id: targetId }]
+      },
+      data: { revoked_at: new Date() }
+    });
   }
 }
