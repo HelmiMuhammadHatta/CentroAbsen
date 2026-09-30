@@ -443,7 +443,8 @@ export class FinanceService {
         tx,
         request.user_id,
         'Dana Presensi / Pengajuan Dicairkan',
-        `Pengajuan dana Anda sebesar Rp ${amountStr} telah dicairkan pada ${todayStr} melalui metode ${method}.`
+        `Pengajuan dana Anda sebesar Rp ${amountStr} telah dicairkan pada ${todayStr} melalui metode ${method}.`,
+        proofFilePath || undefined
       );
 
       return disbursement;

@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Home, Clock, FileText, User, LogOut, Menu, Bell } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
-import { cn } from '@/lib/utils';
+import { cn, getMediaUrl } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationService } from '../services/apiService';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -144,6 +144,11 @@ export const Layout = () => {
                       <div key={n.id} className={cn("p-3 text-xs", !n.is_read && "bg-primary/5 font-medium")}>
                         <p className="font-semibold text-slate-900">{n.title}</p>
                         <p className="text-slate-600 mt-0.5">{n.body}</p>
+                        {n.link && (
+                          <a href={n.link.startsWith('http') || n.link.startsWith('/') ? n.link : getMediaUrl(n.link)} target="_blank" rel="noreferrer" className="text-primary hover:underline mt-1 block">
+                            Lihat Lampiran / Tautan
+                          </a>
+                        )}
                         <p className="text-[10px] text-muted-foreground mt-1">
                           {new Date(n.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                         </p>
