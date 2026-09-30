@@ -34,10 +34,11 @@ async function main() {
   });
 
   // 3. Departments
-  const divProduct = await prisma.department.create({ data: { name: 'Product' } });
+  const divIT = await prisma.department.create({ data: { name: 'Information Technology' } });
+  const divMarketing = await prisma.department.create({ data: { name: 'Marketing' } });
   const divOperations = await prisma.department.create({ data: { name: 'Operations' } });
   const divFinance = await prisma.department.create({ data: { name: 'Finance' } });
-  const divHR = await prisma.department.create({ data: { name: 'Human Resources' } });
+  const divHR = await prisma.department.create({ data: { name: 'Human Resources & GA' } });
   const divExec = await prisma.department.create({ data: { name: 'Executive' } });
 
   // 4. Leave Types
@@ -105,31 +106,49 @@ async function main() {
   // 6. Users
   const passwordHash = await argon2.hash('password123');
 
-  const ceo = await prisma.user.create({
+  // Board of Director
+  const tarra = await prisma.user.create({
     data: {
-      nik: 'CEO001',
-      full_name: 'Hatta CEO',
-      email: 'ceo@centroabsen.local',
+      nik: 'BOD001',
+      full_name: 'Tarra',
+      email: 'tarra@centroabsen.local',
       password_hash: passwordHash,
       department_id: divExec.id,
       primary_work_location_id: hq.id,
-      work_arrangement: WorkArrangement.Office,
+      work_arrangement: WorkArrangement.Flexible,
       roles: { create: [{ role_id: roleExecutive.id }] }
+    }
+  });
+
+  // CEO
+  const aris = await prisma.user.create({
+    data: {
+      nik: 'CEO001',
+      full_name: 'Aris',
+      email: 'aris@centroabsen.local',
+      password_hash: passwordHash,
+      manager_id: tarra.id,
+      department_id: divExec.id,
+      primary_work_location_id: hq.id,
+      work_arrangement: WorkArrangement.Office,
+      roles: { create: [{ role_id: roleExecutive.id }, { role_id: roleManager.id }] }
     }
   });
 
   await prisma.appSetting.upsert({
     where: { key: 'finance_ceo_user_id' },
-    update: { value: ceo.id },
-    create: { key: 'finance_ceo_user_id', value: ceo.id },
+    update: { value: aris.id },
+    create: { key: 'finance_ceo_user_id', value: aris.id },
   });
 
-  const hrAdmin = await prisma.user.create({
+  // HR & GA
+  const devi = await prisma.user.create({
     data: {
       nik: 'HR001',
-      full_name: 'Budi HR',
-      email: 'hr@centroabsen.local',
+      full_name: 'Devi',
+      email: 'devi@centroabsen.local',
       password_hash: passwordHash,
+      manager_id: aris.id,
       department_id: divHR.id,
       primary_work_location_id: hq.id,
       work_arrangement: WorkArrangement.Office,
@@ -137,12 +156,14 @@ async function main() {
     },
   });
 
-  const finance = await prisma.user.create({
+  // Keuangan
+  const dini = await prisma.user.create({
     data: {
       nik: 'FIN001',
-      full_name: 'Siti Rahma',
-      email: 'finance@centroabsen.local',
+      full_name: 'Dini',
+      email: 'dini@centroabsen.local',
       password_hash: passwordHash,
+      manager_id: aris.id,
       department_id: divFinance.id,
       primary_work_location_id: hq.id,
       work_arrangement: WorkArrangement.Office,
@@ -150,30 +171,47 @@ async function main() {
     },
   });
 
-  const manager1 = await prisma.user.create({
+  // Staff IT
+  const helmi = await prisma.user.create({
     data: {
-      nik: 'MGR001',
-      full_name: 'Andi Pratama',
-      email: 'andi.mgr@centroabsen.local',
+      nik: 'IT001',
+      full_name: 'Helmi',
+      email: 'helmi@centroabsen.local',
       password_hash: passwordHash,
-      manager_id: ceo.id,
-      department_id: divProduct.id,
+      manager_id: aris.id,
+      department_id: divIT.id,
       primary_work_location_id: hq.id,
       work_arrangement: WorkArrangement.Hybrid,
-      roles: { create: [{ role_id: roleManager.id }] }
+      roles: { create: [{ role_id: roleHrAdmin.id }] } // Given HrAdmin to act as System Admin
     },
   });
 
-  const employee1 = await prisma.user.create({
+  // Staff Marketing
+  const asep = await prisma.user.create({
     data: {
-      nik: 'EMP001',
-      full_name: 'Joko Karyawan',
-      email: 'joko@centroabsen.local',
+      nik: 'MKT001',
+      full_name: 'Asep',
+      email: 'asep@centroabsen.local',
       password_hash: passwordHash,
-      manager_id: manager1.id,
-      department_id: divProduct.id,
+      manager_id: aris.id,
+      department_id: divMarketing.id,
       primary_work_location_id: hq.id,
       work_arrangement: WorkArrangement.Flexible,
+      roles: { create: [{ role_id: roleEmployee.id }] }
+    },
+  });
+
+  // Staff Admin
+  const ujang = await prisma.user.create({
+    data: {
+      nik: 'ADM001',
+      full_name: 'Ujang',
+      email: 'ujang@centroabsen.local',
+      password_hash: passwordHash,
+      manager_id: aris.id,
+      department_id: divOperations.id,
+      primary_work_location_id: hq.id,
+      work_arrangement: WorkArrangement.Office,
       roles: { create: [{ role_id: roleEmployee.id }] }
     },
   });
