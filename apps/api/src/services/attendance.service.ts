@@ -3,6 +3,8 @@ import { PrismaClient, WorkMode, AttendanceType, Attendance } from '@prisma/clie
 import { DateTime } from 'luxon';
 import { calculateHaversineDistance } from '../utils/haversine';
 import { processAttendancePhoto } from '../utils/image';
+import { env } from '../config/env.config';
+import { DEFAULT_BUSINESS_CONFIG } from '@centroabsen/shared';
 
 
 const TZ = 'Asia/Jakarta';
@@ -20,8 +22,8 @@ export class AttendanceService {
     photoBuffer: Buffer;
   }) {
     // 1. Akurasi GPS
-    if (data.accuracyMeters > 100 && process.env.NODE_ENV === 'production') {
-      throw new Error('Akurasi GPS lebih dari 100 meter, silakan coba lagi');
+    if (data.accuracyMeters > (DEFAULT_BUSINESS_CONFIG.DEFAULT_GPS_ACCURACY_THRESHOLD_METERS * 2) && env.NODE_ENV === 'production') {
+      throw new Error(`Akurasi GPS lebih dari ${DEFAULT_BUSINESS_CONFIG.DEFAULT_GPS_ACCURACY_THRESHOLD_METERS * 2} meter, silakan coba lagi`);
     }
 
     const serverTime = DateTime.now().setZone(TZ);
@@ -32,11 +34,11 @@ export class AttendanceService {
     const flags: string[] = [];
 
     // 2. Selisih waktu perangkat
-    if (Math.abs(serverTime.diff(clientTime, 'minutes').minutes) > 2) {
+    if (Math.abs(serverTime.diff(clientTime, 'seconds').seconds) > DEFAULT_BUSINESS_CONFIG.MAX_DEVICE_TIME_SKEW_SECONDS) {
       flags.push('jam_perangkat_tidak_sinkron');
     }
 
-    if (data.accuracyMeters >= 50) {
+    if (data.accuracyMeters >= DEFAULT_BUSINESS_CONFIG.DEFAULT_GPS_ACCURACY_THRESHOLD_METERS) {
       flags.push('akurasi_rendah');
     }
 

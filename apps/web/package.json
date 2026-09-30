@@ -39,7 +39,8 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
     "zod": "^3.23.8",
-    "zustand": "^4.5.4"
+    "zustand": "^4.5.4",
+    "@centroabsen/shared": "workspace:*"
   },
   "devDependencies": {
     "@serwist/vite": "^9.5.12",

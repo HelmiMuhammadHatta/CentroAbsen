@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { leaveService, financeService, employeeService, approvalService } from '../services/apiService';
 import { useAuth } from '../hooks/useAuth';
+import { UI_MESSAGES } from '@centroabsen/shared';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -78,7 +79,7 @@ export const LeaveRequest = () => {
   const createLeaveMutation = useMutation({
     mutationFn: leaveService.create,
     onSuccess: () => {
-      toast({ title: "Berhasil", description: "Pengajuan cuti berhasil dibuat." });
+      toast({ title: UI_MESSAGES.TOAST_SUCCESS_TITLE, description: UI_MESSAGES.LEAVE_SUBMIT_SUCCESS });
       queryClient.invalidateQueries({ queryKey: ['leaves'] });
       setIsDrawerOpen(false);
       setLeaveType('');
@@ -96,7 +97,7 @@ export const LeaveRequest = () => {
   const createFinanceMutation = useMutation({
     mutationFn: financeService.create,
     onSuccess: () => {
-      toast({ title: "Berhasil", description: "Pengajuan keuangan berhasil dibuat." });
+      toast({ title: UI_MESSAGES.TOAST_SUCCESS_TITLE, description: UI_MESSAGES.FINANCE_SUBMIT_SUCCESS });
       queryClient.invalidateQueries({ queryKey: ['finances'] });
       setIsDrawerOpen(false);
       setFinanceType('Reimbursement');
@@ -113,7 +114,7 @@ export const LeaveRequest = () => {
   const actApprovalMutation = useMutation({
     mutationFn: approvalService.act,
     onSuccess: () => {
-      toast({ title: "Berhasil", description: "Persetujuan telah diproses." });
+      toast({ title: UI_MESSAGES.TOAST_SUCCESS_TITLE, description: UI_MESSAGES.APPROVAL_SUCCESS });
       queryClient.invalidateQueries({ queryKey: ['approval-queue'] });
       queryClient.invalidateQueries({ queryKey: ['leaves'] });
       queryClient.invalidateQueries({ queryKey: ['finances'] });

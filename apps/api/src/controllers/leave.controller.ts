@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { LeaveService } from '../services/leave.service';
 import { prisma } from '../utils/prisma';
+import { env } from '../config/env.config';
 import { RequestStatus } from '@prisma/client';
 import path from 'path';
 import fs from 'fs/promises';
@@ -30,7 +31,7 @@ export class LeaveController {
       if (files && files.length > 0) {
         if (files.length > 5) return res.status(400).json({ error: 'Maksimal 5 lampiran' });
         for (const file of files) {
-          if (file.size > 5 * 1024 * 1024) return res.status(400).json({ error: 'Ukuran lampiran maksimal 5MB' });
+          if (file.size > env.MAX_FILE_SIZE_MB * 1024 * 1024) return res.status(400).json({ error: `Ukuran lampiran maksimal ${env.MAX_FILE_SIZE_MB}MB` });
           if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.mimetype)) {
             return res.status(400).json({ error: 'Format lampiran harus JPG/PNG/PDF' });
           }

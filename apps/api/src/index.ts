@@ -1,4 +1,5 @@
 import express from 'express';
+import { env } from './config/env.config';
 import cors from 'cors';
 import helmet from 'helmet';
 import pino from 'pino-http';
@@ -31,15 +32,15 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({
-  origin: process.env.WEB_URL || 'http://localhost:3000',
+  origin: env.WEB_URL,
   credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
-app.use(ipRateLimit(300, 60 * 1000));
+app.use(ipRateLimit(env.RATE_LIMIT_MAX_REQUESTS, env.RATE_LIMIT_WINDOW_MS));
 app.use(requireCsrf);
 app.use(pino({
-  logger: require('pino')({ level: process.env.LOG_LEVEL || 'info' })
+  logger: require('pino')({ level: env.LOG_LEVEL })
 }));
 
 app.get('/health', (req: express.Request, res: express.Response) => {
@@ -174,8 +175,8 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-const IS_DEV = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
-if (IS_DEV || process.env.ENABLE_DOCS === 'true') {
+const IS_DEV = env.NODE_ENV === 'development';
+if (IS_DEV || env.ENABLE_DOCS) {
   import('swagger-ui-express').then((swaggerUi) => {
     const openApiPath = path.resolve(process.cwd(), '../../docs/openapi.json');
     let swaggerDocument: any = { info: { description: '' } };
@@ -210,7 +211,7 @@ if (IS_DEV || process.env.ENABLE_DOCS === 'true') {
   });
 }
 
-const PORT = process.env.PORT || 4000;
+const PORT = env.PORT;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
   initAttendanceJob();

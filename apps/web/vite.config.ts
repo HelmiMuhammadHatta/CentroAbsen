@@ -17,6 +17,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@centroabsen/shared": path.resolve(__dirname, "../../packages/shared/src")
     },
   },
   server: {
@@ -24,7 +25,7 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:4000',
+        target: process.env.VITE_API_TARGET || 'http://localhost:4000',
         changeOrigin: true
       }
     }

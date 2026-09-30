@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { attendanceService } from '../services/apiService';
 import { useAuth } from '../hooks/useAuth';
+import { UI_MESSAGES } from '@centroabsen/shared';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -93,7 +94,7 @@ export const Attendance = () => {
   const clockInMutation = useMutation({
     mutationFn: attendanceService.clockIn,
     onSuccess: () => {
-      toast({ title: "Clock-in Berhasil", description: "Selamat bekerja!" });
+      toast({ title: "Clock-in Berhasil", description: UI_MESSAGES.CLOCK_IN_SUCCESS });
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
     },
     onError: (err: any) => toast({ 
@@ -106,7 +107,7 @@ export const Attendance = () => {
   const clockOutMutation = useMutation({
     mutationFn: attendanceService.clockOut,
     onSuccess: () => {
-      toast({ title: "Clock-out Berhasil", description: "Terima kasih atas kerja keras Anda hari ini!" });
+      toast({ title: "Clock-out Berhasil", description: UI_MESSAGES.CLOCK_OUT_SUCCESS });
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
     },
     onError: (err: any) => toast({ 

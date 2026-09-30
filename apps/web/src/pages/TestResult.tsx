@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getMediaUrl } from '../lib/utils';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { assessmentService } from '../services/apiService';
@@ -64,7 +65,7 @@ export const TestResult = () => {
             </div>
             <div className="p-2 flex items-center justify-center bg-black/40">
               <img 
-                src={`http://localhost:5000${selectedSnapshot}`} 
+                src={getMediaUrl(selectedSnapshot)} 
                 alt="Proctoring Fullscreen" 
                 className="max-h-[75vh] w-auto object-contain rounded-lg"
               />
@@ -278,7 +279,7 @@ export const TestResult = () => {
                     className="aspect-[4/3] bg-slate-200 rounded-xl overflow-hidden border border-slate-300 shadow-xs relative group cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
                   >
                     <img 
-                      src={`http://localhost:5000${snap}`} 
+                      src={getMediaUrl(snap)} 
                       alt={`Snapshot ${idx+1}`} 
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
                     />

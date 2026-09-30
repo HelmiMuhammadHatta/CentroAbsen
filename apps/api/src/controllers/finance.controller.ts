@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { FinanceService } from '../services/finance.service';
 import { prisma } from '../utils/prisma';
+import { env } from '../config/env.config';
 import { FinanceRequestKind } from '@prisma/client';
 import path from 'path';
 import fs from 'fs/promises';
@@ -23,7 +24,7 @@ export class FinanceController {
       if (files && files.length > 0) {
         if (files.length > 5) return res.status(400).json({ error: 'Maksimal 5 lampiran' });
         for (const file of files) {
-          if (file.size > 5 * 1024 * 1024) return res.status(400).json({ error: 'Ukuran lampiran maksimal 5MB' });
+          if (file.size > env.MAX_FILE_SIZE_MB * 1024 * 1024) return res.status(400).json({ error: `Ukuran lampiran maksimal ${env.MAX_FILE_SIZE_MB}MB` });
           if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.mimetype)) {
             return res.status(400).json({ error: 'Format lampiran harus JPG/PNG/PDF' });
           }
@@ -179,7 +180,7 @@ export class FinanceController {
 
       let proofFilePath: string | undefined = undefined;
       if (file) {
-        if (file.size > 5 * 1024 * 1024) return res.status(400).json({ error: 'Ukuran bukti pencairan maksimal 5MB' });
+        if (file.size > env.MAX_FILE_SIZE_MB * 1024 * 1024) return res.status(400).json({ error: `Ukuran bukti pencairan maksimal ${env.MAX_FILE_SIZE_MB}MB` });
         if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.mimetype)) {
           return res.status(400).json({ error: 'Format bukti pencairan harus JPG/PNG/PDF' });
         }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getMediaUrl } from '../lib/utils';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { candidateService, assessmentService } from '../services/apiService';
@@ -473,7 +474,7 @@ export const CandidateDetail = () => {
                                   className="aspect-[4/3] rounded-lg overflow-hidden border border-slate-200 bg-slate-100 relative group cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
                                 >
                                   <img 
-                                    src={`http://localhost:5000${snap}`} 
+                                    src={getMediaUrl(snap)} 
                                     alt={`Snapshot ${idx + 1}`} 
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
                                   />
@@ -710,7 +711,7 @@ export const CandidateDetail = () => {
             </div>
             <div className="p-4 bg-slate-950 flex items-center justify-center">
               <img 
-                src={`http://localhost:5000${selectedSnapshot}`} 
+                src={getMediaUrl(selectedSnapshot)} 
                 alt="Full Proctoring Snapshot" 
                 className="max-h-[70vh] w-auto object-contain rounded-lg border border-slate-800 shadow-lg"
               />

@@ -1,3 +1,4 @@
+import { env } from '../config/env.config';
 import { prisma } from '../utils/prisma';
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
@@ -141,17 +142,18 @@ export class AuthService {
       }
     });
 
-    // Send email using Mailpit (SMTP port 1025)
+    // Send email using configured SMTP
     const transporter = nodemailer.createTransport({
-      host: 'localhost',
-      port: 1025,
-      ignoreTLS: true
+      host: env.SMTP_HOST,
+      port: env.SMTP_PORT,
+      ignoreTLS: true,
+      auth: env.SMTP_USER && env.SMTP_PASS ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined
     });
 
-    const resetLink = `${process.env.WEB_URL || 'http://localhost:3000'}/reset-password?token=${plainToken}`;
+    const resetLink = `${env.WEB_URL}/reset-password?token=${plainToken}`;
 
     await transporter.sendMail({
-      from: '"CentroAbsen" <noreply@centroabsen.local>',
+      from: env.SMTP_FROM,
       to: email,
       subject: 'Reset Password CentroAbsen',
       text: `Klik tautan ini untuk reset password Anda: ${resetLink}`
