@@ -103,8 +103,29 @@ async function main() {
     }
   });
 
+  const roleSuperAdmin = await prisma.role.create({
+    data: {
+      name: 'SuperAdmin',
+      permissions: { create: getPermIds(permissions) }
+    }
+  });
+
   // 6. Users
   const passwordHash = await argon2.hash('password123');
+
+  // Super Admin
+  const admin = await prisma.user.create({
+    data: {
+      nik: 'ADM999',
+      full_name: 'Super Administrator',
+      email: 'admin@centroabsen.local',
+      password_hash: passwordHash,
+      department_id: divExec.id,
+      primary_work_location_id: hq.id,
+      work_arrangement: WorkArrangement.Office,
+      roles: { create: [{ role_id: roleSuperAdmin.id }] }
+    }
+  });
 
   // Board of Director
   const tarra = await prisma.user.create({
